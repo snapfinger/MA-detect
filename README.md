@@ -1,2 +1,3 @@
 # cv
-for project of cv course
+computer vision project
+MA detection in fundus images
