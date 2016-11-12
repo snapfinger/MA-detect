@@ -1,7 +1,7 @@
 /*peak detection in a profile*/
 #include "VisXV4.h"          /* VisX structure include file     */
 #include "Vutil.h"           /* VisX utility header files       */
-//#include <string.h>
+#include <string.h>
 //#include <stdlib.h>
 #include <stdbool.h>
 #include <limits.h>
@@ -31,11 +31,12 @@ Vfstruct (tm);                      /* temp image structure         */
 Vfread(&im,"image10_pre.vx");
 Vfembed(&tm,&im,1,1,1,1);
 //int p[ELEMENT]={1,3,4,5,12,14,10,8,6,3,2};
-//int p[ELEMENT]={2,3,12,13,14,15,16,18,15,14,10,4};
-int p[ELEMENT]={24,22,20,18,16,15,12,10,8,6,4,2};//test:only decreasing ramp
+int p[ELEMENT]={2,3,12,13,14,15,16,18,15,14,10,4};
+//int p[ELEMENT]={24,22,20,18,16,15,12,10,8,6,4,2};//test:only decreasing ramp
 //int p[ELEMENT]={2,4,6,8,10,12,14,16,18,20,22,24};//test:only increasing ramp
 int i=0,j=0;//corresponding angel pointer:0 degree->0, 6 degree->1,etc.
-int max=0,max_d=0,inc_s=0,inc_e=0,dec_s=0,dec_e=0;
+int max=0,max_d=0;
+int inc_s=0,inc_e=0,dec_s=0,dec_e=0,center=0;//pixel indexes 
 int gap[ELEMENT]={0},inc[ELEMENT]={0},count_gap=0,count_inc=0,stop=0;
 int gap_dec[ELEMENT]={0},dec[ELEMENT]={0},count_gapd=0,count_dec=0;
 
@@ -223,6 +224,7 @@ w_top=dec_s-inc_e;
 w_peak=dec_e-inc_s;
 h_inc=p[inc_e]-p[inc_s];
 h_dec=p[dec_s]-p[dec_e];
+center=(inc_e+dec_s)/2;
 
 //calculate increasing slope (rise&descend / only descending ramp)
 if(inc_s!=inc_e){
@@ -237,15 +239,29 @@ if(dec_s!=dec_e){
   s_dec=INT_MAX;//decreasing slope is also considered as positive
 }
 
+//calculate peak height
+  if(p[inc_s]>p[dec_e]){
+    h_peak=p[center]-p[inc_s]+((p[inc_s]-p[dec_e])*(center-inc_s)/w_peak);
+  }else if(p[inc_s]<p[dec_e]){
+    h_peak=p[center]-p[dec_e]+((p[dec_e]-p[inc_s])*(dec_e-center)/w_peak);
+  }else{  
+    h_peak=p[center]-p[inc_s];
+  }
+
 
 fprintf(stderr,"start calculate properties...\n");
-fprintf(stderr,"inc_s=%d inc_e=%d dec_s=%d dec_e=%d  \n",inc_s,inc_e,dec_s,dec_e);
+fprintf(stderr,"inc_s=%d inc_e=%d dec_s=%d dec_e=%d center=%d  \n",inc_s,inc_e,dec_s,dec_e,center);
 fprintf(stderr,"w_top is:%d \n",w_top);
 fprintf(stderr,"w_peak is:%d \n",w_peak);
 fprintf(stderr,"h_inc is:%d \n",h_inc);
 fprintf(stderr,"h_dec is:%d \n",h_dec);
 fprintf(stderr,"s_inc is:%f \n",s_inc);
 fprintf(stderr,"s_dec is:%f \n",s_dec);
+fprintf(stderr,"h_peak is:%f \n",h_peak);
+
+//VXclose(VXin);
+//VXclose(VXout);
+exit(0);
 }
 
 
