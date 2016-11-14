@@ -4,12 +4,16 @@
 */
 #include "VisXV4.h"          /* VisX structure include file     */
 #include "Vutil.h"           /* VisX utility header files       */
-#include <string.h>
-#include <stdlib.h>
+//#include <string.h>
+//#include <stdlib.h>
 #include <stdbool.h>
+//#include "angle.h"
 #define MAX_Q 3000
 #define NUM_LMR 30000
 #define NUM_V 30000
+#define MIN_DIFF 2
+#define MIN_HEIGHT 3
+#define MAX_GAP 3
 
 VXparam_t par[] =             /* command line structure            */
 { /* prefix, value,   description                         */   
@@ -34,11 +38,55 @@ long countLMR=0;
 int queueX[MAX_Q],queueY[MAX_Q];
 long front=0,rear=-1,itemCount=0;
 int lmrX[NUM_LMR],lmrY[NUM_LMR];
-
+int label_value=0;
+int label[tm.yhi][tm.xhi];
+int y_label=0,x_label=0;
 
 int y=0,x=0;//for image index
 int m=0,n=0;//count local maximum,m for y axis, n for x axis
+
+
+
+for(y_label=0;y_label<tm.yhi;y_label++)
+  for(x_label=0;x_label<tm.xhi;x_label++){
+      label[y_label][x_label]=0;
+  }
+/*
+void bfsFill(int[][] tm.u,int label[][],int y, int x){
+  
+
+}
+*/
 /*define basic operations of queue*/
+bool isEmpty() {
+   return itemCount == 0;
+}
+
+void insert(int data) {
+
+   if(!isFull()) {
+	
+      if(rear == MAX_Q-1) {
+         rear = -1;            
+      }       
+
+      queue[++rear] = data;
+      itemCount++;
+   }
+}
+
+int removeData() {
+   int data = queue[front++];
+	
+   if(front == MAX_Q) {
+      front = 0;
+   }
+	
+   itemCount--;
+   return data;  
+}
+
+/****************/
 bool isEmptyX() {
    return itemCount == 0;
 }
@@ -46,6 +94,8 @@ bool isEmptyX() {
 bool isFull() {
    return itemCount == MAX_Q;
 }
+
+
 
 void insertX(int data) {
 
@@ -116,9 +166,9 @@ start finding local maximum regions
 question: the queue seems useless here
 */
 
-int y_axis,x_axis;
-int countQ=0;//index of element in queue
-
+//int y_axis,x_axis;
+//int countQ=0;//index of element in queue
+/*
 for(y=tm.ylo+5;y<=tm.yhi-5;y++) //traverse all the pixels in the image
   for(x=col_start;x<=col_end;x++){
 //for(y=im.ylo;y<im.ylo+20;y++)
@@ -160,7 +210,71 @@ for(y=tm.ylo+5;y<=tm.yhi-5;y++) //traverse all the pixels in the image
 		}
    }
 }
+*/
 
+int code=0;
+int row_start=tm.ylo+5,row_end=tm.yhi-5;
+int countQ=0;//index of element in queue
+/**********use breadth-first search to find local maximum regions******************/
+for(y=row_start;y<=row_end;y++) //traverse all the pixels in the image
+
+  for(x=col_start;x<=col_end;x++){
+
+   if(tm.u[y][x]>=240)  {continue;} //do not consider those margin areas
+    
+  else if(tm.u[y][x]>=tm.u[y-1][x-1] && tm.u[y][x]>=tm.u[y-1][x] && tm.u[y][x]>=tm.u[y-1][x+1] //compare the pixel with its 8-neighbours
+
+  && tm.u[y][x]>=tm.u[y][x-1] && tm.u[y][x]>=tm.u[y][x+1] 
+
+  && tm.u[y][x]>=tm.u[y+1][x-1] && tm.u[y][x]>=tm.u[y+1][x] && tm.u[y][x]>=tm.u[y+1][x+1]){
+     
+     code=x*tm.xhi+j;
+     j=code/tm.xhi;//row
+     i=code%tm.xhi;//column
+     insert(code);
+     
+     while(!isEmpty()){
+       code=removeData();
+		   zf(i>col_start && j>row_start && tm.u[j][i]==tm.u[j-1][i-1] && label[j-1][i-1]==0){ //left-down
+           label[j-1][i-1]=label_value;
+           insert((i-1)*tm.xhi+j-1);
+        }
+        zf(j>row_start && tm.u[j][i]==tm.u[j-1][i] && label[j-1][i]==0 ){ //down
+           label[j-1][i]=label_value;
+           insert(i*tm.xhi+j-1);
+        }
+        
+        zf(j>row_start && i<col_end && tm.u[j][i]==tm.u[j-1][i+1]&& label[j-1][i+1]==0){//rzght-down
+           label[j-1][i+1]=label_value;
+           insert((i-1)*tm.xhi+(j+1));
+
+        }
+        zf(i>col_start && tm.u[j][i]==tm.u[j][i-1]&& label[j][i-1]==0 ){//left
+          label[j][i-1]=label_value;
+          insert((i-1)*tm.xhi+(j+1));
+        }
+        zf(i<col_end && tm.u[j][i]==tm.u[j][i+1]&& label[j][i+1]==0){//rzght
+           label[j][i+1]=label_value;
+           insert((i)*tm.xhi+(j+1));
+        } 
+        zf(j<row_end && i>col_start && tm.u[j][i]==tm.u[j+1][i-1] && label[j+1][i-1]==0){//up-left
+            label[j+1][i-1]=label_value;
+            insert((i+1)*tm.xhi+(j-1));
+         }
+         zf(j<row_end && tm.u[j][i]==tm.u[j+1][i]&& label[j+1][i]==0){//up
+            label[j+1][i]=label_value;
+            insert((i+1)*tm.xhi+j);
+         }
+         zf(j<row_end && i<col_end && tm.u[j][i]==tm.u[j+1][i+1]&& label[j+1][i+1]==0){//up-rzght
+            label[j+1][i+1]=label_value;
+            insert((i+1)*tm.xhi+(j+1));
+         }
+
+      }
+      label_value++;
+  }
+   
+}
 int countM=0;
 
 for(countM=0;countM<=m;countM++){//print out the LMR's location and intensity
@@ -170,4 +284,5 @@ for(countM=0;countM<=m;countM++){//print out the LMR's location and intensity
 }
   fprintf(stderr,"number of local maxima is:%d\n",countLMR);
    fprintf(stderr,"yhi=%d,xhi=%d\n",im.yhi,im.xhi);
+
 }
