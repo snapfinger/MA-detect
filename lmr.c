@@ -28,8 +28,8 @@ char *argv[];
 {
 Vfstruct (im);                      /* i/o image structure          */
 Vfstruct (tm);                      /* temp image structure         */
-//Vfread(&im,"image10_pre.vx");
-Vfread(&im,"small.vx");
+Vfread(&im,"image10_pre.vx");
+//Vfread(&im,"small.vx");
 Vfembed(&tm,&im,0,0,0,0);
 //Vfnewim(&tm,im.type,im.bbx,im.chan);
 long countLMR=0;
@@ -37,24 +37,15 @@ int queue[MAX_Q];
 long front=0,rear=-1,itemCount=0;
 int lmrX[NUM_LMR],lmrY[NUM_LMR];
 long label_value=0;
-int label[tm.yhi][tm.xhi];
+long label[im.yhi][im.xhi];
 int y_label=0,x_label=0;
 
 int y=0,x=0;//for image index
 int m=0,n=0;//count local maximum,m for y axis, n for x axis
-/*
-int try[2][3]={{1,2,3},{4,5,6}};
-int x1=0,x2=0;
 
-x1=sizeof(try)/sizeof(try[0]);//row
-x2=sizeof(try[0])/sizeof(int);//column
-
-fprintf(stderr,"x1=%d x2=%d\n",x1,x2);
-fprintf(stderr,"start\n");
-*/
 for(y_label=im.ylo;y_label<=im.yhi;y_label++)
   for(x_label=im.xlo;x_label<=im.xhi;x_label++){
-      im.u[y_label][x_label]=0;
+      label[y_label][x_label]=0;
   }
  /*
  fprintf(stderr,"\ninitial label:\n");//show intialized labels
@@ -112,25 +103,11 @@ int removeData() {
 /*find the rough region to search*/
 int row_start=im.ylo+1,row_end=im.yhi-1;
 int col_start=im.xlo+1,col_end=im.xhi-1;
-/*
-for(x=0;x<tm.xhi;x++){
-			if(tm.u[tm.yhi/2][x]<243){ //the margin area's pixel value==243, so don't consider these regions
-				col_start=x;
-				break;
-			}
-}
 
-for(x=tm.xhi-1;x>0;x--){
-			if(tm.u[tm.yhi/2][x]<243){
-				col_end=x;
-				break;
-			}
-}
-*/
-/**********use breadth-first search to find local maximum regions******************/
+//use breadth-first search to find local maximum regions
 long code=0;
 int i=0,j=0;
-//int offset=sizeof(tm.u[0])/sizeof(unsigned int);
+
 int offset=im.xhi-im.xlo+1;
 
 int countQ=0;//index of element in queue
@@ -142,13 +119,13 @@ for(y=row_start;y<=row_end;y++) //traverse all the pixels in the image
   for(x=col_start;x<=col_end;x++){
   
    if(tm.u[y][x]>=240)  {continue;} //do not consider those margin areas
-   if(im.u[y][x]!=0){continue;}
+   else if(label[y][x]!=0){continue;}
     
   else if(tm.u[y][x]>=tm.u[y-1][x-1] && tm.u[y][x]>=tm.u[y-1][x] && tm.u[y][x]>=tm.u[y-1][x+1] //compare the pixel with its 8-neighbours
 
   && tm.u[y][x]>=tm.u[y][x-1] && tm.u[y][x]>=tm.u[y][x+1] 
 
-  && tm.u[y][x]>=tm.u[y+1][x-1] && tm.u[y][x]>=tm.u[y+1][x] && tm.u[y][x]>=tm.u[y+1][x+1] && !im.u[y][x] ){
+  && tm.u[y][x]>=tm.u[y+1][x-1] && tm.u[y][x]>=tm.u[y+1][x] && tm.u[y][x]>=tm.u[y+1][x+1] && !label[y][x] ){
      
    
      code=y*offset+x;
@@ -156,47 +133,47 @@ for(y=row_start;y<=row_end;y++) //traverse all the pixels in the image
      insert(code);
      
      while(!isEmpty()){
-       
        code=removeData();
        i=code/offset;//row
        j=code%offset;//column
-       im.u[i][j]=label_value;
-      // fprintf(stderr,"i=%d j=%d label_value=%d pixel_value=%d\n",i,j,label_value,tm.u[i][j]);
-      	if(j>col_start && i>row_start && tm.u[i][j]==tm.u[i-1][j-1] && !im.u[i-1][j-1]){ //left-down
-           im.u[i-1][j-1]=label_value;
+       if(!label[i][j]){
+         label[i][j]=label_value;
+         fprintf(stderr,"i=%d j=%d label_value=%d pixel_value=%d\n",i,j,label_value,tm.u[i][j]);
+    	   if(j>col_start && i>row_start && tm.u[i][j]==tm.u[i-1][j-1] && !label[i-1][j-1]){ //left-down
+          label[i-1][j-1]=label_value;
            insert((i-1)*offset+j-1);
         }
-        if(i>row_start && tm.u[i][j]==tm.u[i-1][j] && !im.u[i-1][j] ){ //down
+        if(i>row_start && tm.u[i][j]==tm.u[i-1][j] && !label[i-1][j] ){ //down
            im.u[i-1][j]=label_value;
            insert((i-1)*offset+j);
         }
         
-        if(i>row_start && j<col_end && tm.u[i][j]==tm.u[i-1][j+1]&& !im.u[i-1][j+1]){//right-down
-           im.u[i-1][j+1]=label_value;
+        if(i>row_start && j<col_end && tm.u[i][j]==tm.u[i-1][j+1]&& !label[i-1][j+1]){//right-down
+           label[i-1][j+1]=label_value;
            insert((i-1)*offset+(j+1));
 
         }
-        if(j<col_end && tm.u[i][j]==tm.u[i][j+1]&& !im.u[i][j+1]){//right
-           im.u[i][j+1]=label_value;
+        if(j<col_end && tm.u[i][j]==tm.u[i][j+1]&& !label[i][j+1]){//right
+           label[i][j+1]=label_value;
            insert((i)*offset+(j+1));
         }
-        if(i<row_end && j<col_end && tm.u[i][j]==tm.u[i+1][j+1]&& !im.u[i+1][j+1]){//up-right
-            im.u[i+1][j+1]=label_value;
+        if(i<row_end && j<col_end && tm.u[i][j]==tm.u[i+1][j+1]&& !label[i+1][j+1]){//up-right
+            label[i+1][j+1]=label_value;
             insert((i+1)*offset+(j+1));
          }
-          if(i<row_end && tm.u[i][j]==tm.u[i+1][j]&& !im.u[i+1][j]){//up
+          if(i<row_end && tm.u[i][j]==tm.u[i+1][j]&& !label[i+1][j]){//up
             label[i+1][j]=label_value;
             insert((i+1)*offset+j);
          }
-        if(i<row_end && j>col_start && tm.u[i][j]==tm.u[i+1][j-1] && !im.u[i+1][j-1]){//up-left
-            im.u[i+1][j-1]=label_value;
+        if(i<row_end && j>col_start && tm.u[i][j]==tm.u[i+1][j-1] && !label[i+1][j-1]){//up-left
+            label[i+1][j-1]=label_value;
             insert((i+1)*offset+(j-1));
          }
-        if(j>col_start && tm.u[i][j]==tm.u[i][j-1]&& !im.u[i][j-1]){//left
-           im.u[i][j-1]=label_value;
+        if(j>col_start && tm.u[i][j]==tm.u[i][j-1]&& !label[i][j-1]){//left
+           label[i][j-1]=label_value;
            insert((i)*offset+(j-1));
         }
-      /*
+      
          fprintf(stderr,"elements in queue\n");
          for(countQ=front;countQ<=rear;countQ++){
              fprintf(stderr,"%d ",queue[countQ]);
@@ -204,10 +181,11 @@ for(y=row_start;y<=row_end;y++) //traverse all the pixels in the image
            }
          fprintf(stderr,"\n");
          fprintf(stderr,"number=%d \n",itemCount);
-         */
+         
      } 
+     }
       label_value++;
-      
+    
   }
    
 }
@@ -217,7 +195,7 @@ for(y=row_start;y<=row_end;y++) //traverse all the pixels in the image
   fprintf(stderr,"\nprocessed label:\n");
   for(y_label=row_start;y_label<=row_end;y_label++){
     for(x_label=col_start;x_label<=col_end;x_label++){
-      fprintf(stderr,"%d ",im.u[y_label][x_label]); 
+      fprintf(stderr,"%d ",label[y_label][x_label]); 
       }
       fprintf(stderr,"\n");
    
