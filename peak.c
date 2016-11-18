@@ -1,267 +1,403 @@
-/*peak detection in a profile*/
 #include "VisXV4.h"          /* VisX structure include file     */
 #include "Vutil.h"           /* VisX utility header files       */
 #include <string.h>
 //#include <stdlib.h>
 #include <stdbool.h>
 #include <limits.h>
-//#include "angle.h"
 #define MIN_DIFF 2
 #define MIN_HEIGHT 3
 #define MAX_GAP 3
-#define THRESH 1
-#define ELEMENT 12//number of elements in array p[]
+#define THRESH_TOP 1//the intensity range of the top
+#define ELEMENT 31//number of elements in array p[]
+#define NUM_PRO 30//corresponds to 6 degree cross profile
 
 VXparam_t par[] =             /* command line structure            */
 { /* prefix, value,   description                         */   
-{    "if=",    0,   " input file"},
-{    "of=",    0,   " output file "},
+{    "y=",    0,   " input y coordinate"},
+{    "x=",    0,  " input x coordinate"},
 {     0,       0,   0}  /* list termination */
 };
-#define  IVAL   par[0].val
-#define  OVAL   par[1].val
+#define  Y   par[0].val
+#define  X   par[1].val
 
 
-main(argc, argv)
-int argc;
-char *argv[];
-{
+int main(int argc, char** argv){
 Vfstruct (im);                      /* i/o image structure          */
 Vfstruct (tm);                      /* temp image structure         */
-Vfread(&im,"image10_pre.vx");
+//Vfread(&im,"image10_pre.vx");
+Vfread(&im,"img_pre.vx");
 Vfembed(&tm,&im,1,1,1,1);
-//int p[ELEMENT]={1,3,4,5,12,14,10,8,6,3,2};
-int p[ELEMENT]={2,3,12,13,14,15,16,18,15,14,10,4};
-//int p[ELEMENT]={24,22,20,18,16,15,12,10,8,6,4,2};//test:only decreasing ramp
-//int p[ELEMENT]={2,4,6,8,10,12,14,16,18,20,22,24};//test:only increasing ramp
-int i=0,j=0;//corresponding angel pointer:0 degree->0, 6 degree->1,etc.
-int max=0,max_d=0;
-int inc_s=0,inc_e=0,dec_s=0,dec_e=0,center=0;//pixel indexes 
-int gap[ELEMENT]={0},inc[ELEMENT]={0},count_gap=0,count_inc=0,stop=0;
-int gap_dec[ELEMENT]={0},dec[ELEMENT]={0},count_gapd=0,count_dec=0;
+int p[NUM_PRO][ELEMENT];
 
+int count_pro=0,count_ele=0;
 
+int max[NUM_PRO],max_d[NUM_PRO];
+int inc_s[NUM_PRO],inc_e[NUM_PRO],dec_s[NUM_PRO],dec_e[NUM_PRO],center[NUM_PRO];//pixel indexes 
+int gap[NUM_PRO][ELEMENT],inc[NUM_PRO][ELEMENT],count_gap[NUM_PRO],count_inc[NUM_PRO],stop[NUM_PRO];
+int gap_dec[NUM_PRO][ELEMENT],dec[NUM_PRO][ELEMENT],count_gapd[NUM_PRO],count_dec[NUM_PRO];
 
+int xoffset[NUM_PRO][ELEMENT];
+int yoffset[NUM_PRO][ELEMENT];
+int y_in=0,x_in=0;
+int xx=0,yy=0;//count element
+double theta=0;
+int k=0,i=0,j=0;
 
+VXparse(&argc,&argv,par);
+ 
+y_in=atoi(Y);
+x_in=atoi(X);
 
+fprintf(stderr,"output profile\n");
+//profile scanning
+for(k = 0; k<ELEMENT; k++){
+   theta = 6 * k;  //angle
+   if(theta<45 || theta >135){
+    i = 0;
+    for (xx = -15; xx <= 15; xx++){				
+          yy = round(xx*tan(theta / 180.0*3.1415926));
+  	       xoffset[k][i] = xx;
+	         yoffset[k][i] = yy;
+				   i++;
+       }
+	}else{
+      i = 0;
+      for (yy = -15; yy <= 15; yy++){
+         xx = round(yy / tan(theta / 180.0*3.1415926));
+		     xoffset[k][i] = xx;
+         yoffset[k][i] = yy;		
+         i++;
+       }
+		}
+	
+}
+	
 
-for(i=0;i<ELEMENT;i++){ //peak detection
-  if(p[i]>max){
-    max=p[i];//record peak value
-    inc_e=i;//record peak index
-    }
+//Get their pixel values
+for (k = 0; k < NUM_PRO; k++){
+    int xx,yy;
+    for(i=0;i<ELEMENT;i++){ 
+       xx=xoffset[k][i];
+       yy=yoffset[k][i];
+       p[k][i]=im.u[y_in+yy][x_in+xx];
+       }
 }
 
+int count=0;
+i=11;
+//for(i=0;i<NUM_PRO;i++){
+  for(j=0;j<ELEMENT;j++){
+    count++;
+    fprintf(stderr,"%d ",p[i][j]);
+    }
+    fprintf(stderr,"\n");
+    
+//}
 
-/*find starting point of decreasing ramp*/
-for(i=inc_e;i<ELEMENT;i++){
-  if(max-p[i]>THRESH){
-      max_d=p[i-1];
-      dec_s=i-1;
-      break;
+fprintf(stderr,"counttotal=%d \n",count);
+
+
+for(i=0;i<NUM_PRO;i++)
+  for(j=0;j<ELEMENT;j++){
+    gap[i][j]=0;
+    inc[i][j]=0;
+    gap_dec[i][j]=0;
+    dec[i][j]=0;
+}
+
+for(i=0;i<NUM_PRO;i++){
+  max[i]=0;
+  max_d[i]=0;
+  inc_s[i]=0;
+  inc_e[i]=0;
+  dec_s[i]=0;
+  dec_e[i]=0;
+  center[i]=ELEMENT/2;
+  stop[i]=0;
+  count_gap[i]=0;
+  count_inc[i]=0;
+  count_gapd[i]=0;
+  count_dec[i]=0;
+}
+  
+
+for(count_pro=0;count_pro<NUM_PRO;count_pro++){
+  for(count_ele=0;count_ele<ELEMENT;count_ele++){ //peak detection
+    if(p[count_pro][count_ele]>max[count_pro]){
+      max[count_pro]=p[count_pro][count_ele];//record peak value
+      inc_e[count_pro]=count_ele;//record peak index, also the end index of rising ramp
+    }
   }
 }
 
-/*calculate elements in gap[]   (increasing)*/
-for(j=inc_e;j>0;j--){
-  if(p[j]-p[j-1]>=MIN_DIFF){
-    gap[count_gap]=j;
-    count_gap++;
-  }else{
-      if(p[j+1]-p[j]>=MIN_DIFF){
-        gap[count_gap]=j;
-        count_gap++;
-      }
+
+//find starting point of decreasing ramp
+for(count_pro=0;count_pro<NUM_PRO;count_pro++){
+  for(count_ele=inc_e[count_pro];count_ele<ELEMENT;count_ele++){
+    if(max[count_pro]-p[count_pro][count_ele]>THRESH_TOP){
+      max_d[count_pro]=p[count_pro][count_ele-1];
+      dec_s[count_pro]=count_ele-1;
+      break;
     }
+  }
 }
 
-if(p[1]-p[0]>=MIN_DIFF){
-  gap[count_gap++]=0;
-}
 
-/*calculate elements in gap_dec[]  (decreasing)*/
-for(j=dec_s;j<ELEMENT-1;j++){
-  if(p[j]-p[j+1]>=MIN_DIFF){
-    gap_dec[count_gapd]=j;
-    count_gapd++;
+
+//calculate elements in gap[]   (increasing)
+for(count_pro=0;count_pro<NUM_PRO;count_pro++){
+  for(j=inc_e[count_pro];j>0;j--){
+    if(p[count_pro][j]-p[count_pro][j-1]>=MIN_DIFF){
+    gap[count_pro][count_gap[count_pro]]=j;
+    count_gap[count_pro]++;
     }else{
-        if(p[j-1]-p[j]>=MIN_DIFF){
-        gap_dec[count_gapd]=j;
-        count_gapd++;
+      if(p[count_pro][j+1]-p[count_pro][j]>=MIN_DIFF){
+        gap[count_pro][count_gap[count_pro]]=j;
+        count_gap[count_pro]++;
         }
     }
-}
-
-
-if(p[ELEMENT-2]-p[ELEMENT-1]>=MIN_DIFF){
-  gap_dec[count_gapd++]=ELEMENT-1;
-}
-
-
-
-
-
-
-/*store increasing ramp's indexes in inc[]*/
-for(j=0;j<count_gap;j++){
-  if(gap[j]-gap[j+1]>MAX_GAP){
-    if(gap[j-1]-gap[j]<=MAX_GAP){
-      inc[j]=gap[j];
-      count_inc++;
-    }
-    break;
-  }else{
-    inc[j]=gap[j];
-    count_inc++;
   }
 }
 
-inc_s=inc[count_inc-1];
+if(p[count_pro][1]-p[count_pro][0]>=MIN_DIFF){
+    gap[count_pro][count_gap[count_pro]++]=0;
+}
 
-/*store decreasing ramp's indexes in dec[]*/
-for(j=0;j<count_gapd;j++){
-  if(abs(gap_dec[j]-gap_dec[j+1])>MAX_GAP){
-    if(abs(gap_dec[j-1]-gap_dec[j])<=MAX_GAP){
-      dec[j]=gap_dec[j];
-      count_dec++;
-    }
-    break;
-  }else{
-    dec[j]=gap_dec[j];
-    count_dec++;
+
+//calculate elements in gap_dec[]  (decreasing)
+for(count_pro=0;count_pro<NUM_PRO;count_pro++){
+  for(j=dec_s[count_pro];j<ELEMENT-1;j++){
+    if(p[count_pro][j]-p[count_pro][j+1]>=MIN_DIFF){
+      gap_dec[count_pro][count_gapd[count_pro]]=j;
+      count_gapd[count_pro]++;
+      }else{
+          if(p[count_pro][j-1]-p[count_pro][j]>=MIN_DIFF){
+          gap_dec[count_pro][count_gapd[count_pro]]=j;
+          count_gapd[count_pro]++;
+          }
+      }
   }
 }
 
-if(gap_dec[count_gapd-1]-gap_dec[count_gapd-2]>MAX_GAP){
-
+if(p[count_pro][ELEMENT-2]-p[count_pro][ELEMENT-1]>=MIN_DIFF){
+    gap_dec[count_pro][count_gapd[count_pro]++]=ELEMENT-1;
 }
 
-dec_e=dec[count_dec-1];
-
-
-/**************** print out code for testing stored data of ramp*******************************/
-fprintf(stderr,"info about the ramp...\n");
-fprintf(stderr,"there are %d elements in p[], the elements are:\n",ELEMENT);
-for(i=0;i<ELEMENT;i++){
-  fprintf(stderr,"%d ",p[i]);
-}
-fprintf(stderr,"\n\n");
-
-fprintf(stderr,"ramp increases end at index %d,that's value %d \n",inc_e,p[inc_e]);
-fprintf(stderr,"ramp decreses from index %d,that's value %d \n\n",dec_s,p[dec_s]);
-
-
-fprintf(stderr,"number of elements in gap[] is:%d, the elements' value are:\n",count_gap);
-for(j=0;j<count_gap;j++){
-  fprintf(stderr,"%d ",p[gap[j]]);
-}
-fprintf(stderr,"\n");
-
-fprintf(stderr,"corresponding indexes in gap[] are: \n");
-for(j=0;j<count_gap;j++){
-  fprintf(stderr,"%d ",gap[j]);
-}
-fprintf(stderr,"\n");
-
-fprintf(stderr,"index of elements in inc ramp are:\n");
-for(j=0;j<count_inc;j++){
-  fprintf(stderr,"%d ",inc[j]);
-}
-fprintf(stderr,"\n");
-
-fprintf(stderr,"corresponding values of elements in inc ramp are:\n");
-for(j=0;j<count_inc;j++){
-  fprintf(stderr,"%d ",p[inc[j]]);
-}
-fprintf(stderr,"\n");
-
-fprintf(stderr,"number of elements in inc[] is:%d \n",count_inc);
-fprintf(stderr,"increasing ramp starts from: %d ends at:%d \n\n",inc_s,inc_e);
 
 
 
-fprintf(stderr,"number of elements in gap_dec[] is:%d, the elements' value are:\n",count_gapd);
-for(j=0;j<count_gapd;j++){
-  fprintf(stderr,"%d ",p[gap_dec[j]]);
-}
-fprintf(stderr,"\n");
-fprintf(stderr,"corresponding indexes in gap_dec[] are: \n");
-for(j=0;j<count_gapd;j++){
-  fprintf(stderr,"%d ",gap_dec[j]);
-}
-fprintf(stderr,"\n");
-fprintf(stderr,"index of elements in dec ramp are:\n");
-for(j=0;j<count_dec;j++){
-  fprintf(stderr,"%d ",dec[j]);
+
+
+//store increasing ramp's indexes in inc[]
+for(count_pro=0;count_pro<NUM_PRO;count_pro++){
+  for(j=0;j<count_gap[count_pro];j++){
+    if(gap[count_pro][j]-gap[count_pro][j+1]>MAX_GAP){
+      if(gap[count_pro][j-1]-gap[count_pro][j]<=MAX_GAP){
+        inc[count_pro][j]=gap[count_pro][j];
+        count_inc[count_pro]++;
+      }
+      break;
+    }else{
+      inc[count_pro][j]=gap[count_pro][j];
+      count_inc[count_pro]++;
+    }
+  }
 }
 
-fprintf(stderr,"\n");
-fprintf(stderr,"corresponding p values of elements in dec ramp are:\n");
-for(j=0;j<count_dec;j++){
-  fprintf(stderr,"%d ",p[dec[j]]);
+fprintf(stderr,"\ninc_s here is %d \n",inc[5][count_inc[5]-1]); 
+for(count_pro=0;count_pro<NUM_PRO;count_pro++){
+  inc_s[count_pro]=inc[count_pro][count_inc[count_pro]-1];
 }
-fprintf(stderr,"\n");
+fprintf(stderr,"\ninc_s here2 is %d \n",inc_s[5]); 
 
-fprintf(stderr,"number of elements in dec[] is:%d \n",count_dec);
-fprintf(stderr,"decreasing ramp starts from: %d ends at:%d \n\n",dec_s,dec_e);
+//store decreasing ramp's indexes in dec[]
+for(count_pro=0;count_pro<NUM_PRO;count_pro++){
+  for(j=0;j<count_gapd[count_pro];j++){
+    if(abs(gap_dec[count_pro][j]-gap_dec[count_pro][j+1])>MAX_GAP){
+      if(abs(gap_dec[count_pro][j-1]-gap_dec[count_pro][j])<=MAX_GAP){
+        dec[count_pro][j]=gap_dec[count_pro][j];
+        count_dec[count_pro]++;
+      }
+      break;
+    }else{
+      dec[count_pro][j]=gap_dec[count_pro][j];
+      count_dec[count_pro]++;
+    }
+  }
+}
 
-/*********************calculate profile property*************************************/
-int w_peak=0,w_top=0,h_inc=0,h_dec=0,h_peak=0;//profile properties
-float s_inc=0,s_dec=0; //increasing and decreasing slope
+
+if(gap_dec[count_pro][count_gapd[count_pro]-1]-gap_dec[count_pro][count_gapd[count_pro]-2]>MAX_GAP){
+}
+
+for(count_pro=0;count_pro<NUM_PRO;count_pro++){
+  dec_e[count_pro]=dec[count_pro][count_dec[count_pro]-1];
+}
+    
+
+
+//calculate profile property
+int w_peak[NUM_PRO],w_top[NUM_PRO],h_inc[NUM_PRO],h_dec[NUM_PRO],h_peak[NUM_PRO];//profile properties
+float s_inc[NUM_PRO],s_dec[NUM_PRO]; //increasing and decreasing slope
+
+for(i=0;i<NUM_PRO;i++){
+  w_peak[i]=0;
+  w_top[i]=0;
+  h_inc[i]=0;
+  h_dec[i]=0;
+  h_peak[i]=0;
+  s_inc[i]=0;
+  s_dec[i]=0;  
+}
 
 //if only exists rising ramp, deceasing index starts and ends at last index 
-if(inc_e==ELEMENT-1){
-  dec_s=ELEMENT-1;
-  dec_e=ELEMENT-1;
+for(count_pro=0;count_pro<NUM_PRO;count_pro++){
+  if(inc_e[count_pro]==ELEMENT-1){
+    dec_s[count_pro]=ELEMENT-1;
+    dec_e[count_pro]=ELEMENT-1;
+  }
 }
  //if only exists descending ramp, increasing index starts and ends at first index
-if(dec_s==0){
-  inc_s=0;
-  inc_e=0;
+for(count_pro=0;count_pro<NUM_PRO;count_pro++){
+  if(dec_s[count_pro]==0){
+    inc_s[count_pro]=0;
+    inc_e[count_pro]=0;
+  }
 }
 
-w_top=dec_s-inc_e;
-w_peak=dec_e-inc_s;
-h_inc=p[inc_e]-p[inc_s];
-h_dec=p[dec_s]-p[dec_e];
-center=(inc_e+dec_s)/2;
+for(count_pro=0;count_pro<NUM_PRO;count_pro++){
+  w_top[count_pro]=dec_s[count_pro]-inc_e[count_pro];
+  w_peak[count_pro]=dec_e[count_pro]-inc_s[count_pro];
+  h_inc[count_pro]=p[count_pro][inc_e[count_pro]]-p[count_pro][inc_s[count_pro]];
+  h_dec[count_pro]=p[count_pro][dec_s[count_pro]]-p[count_pro][dec_e[count_pro]];
+  center[count_pro]=(inc_e[count_pro]+dec_s[count_pro])/2;
+}
 
 //calculate increasing slope (rise&descend / only descending ramp)
-if(inc_s!=inc_e){
-  s_inc=(float)(h_inc/(inc_e-inc_s));
-}else{
-  s_inc=INT_MAX;
+for(count_pro=0;count_pro<NUM_PRO;count_pro++){
+  if(inc_s[count_pro]!=inc_e[count_pro]){
+    s_inc[count_pro]=(float)(h_inc[count_pro]/(inc_e[count_pro]-inc_s[count_pro]));
+  }else{
+    s_inc[count_pro]=INT_MAX;
+  }
 }
+
 //calculate decreasing slope (rise&descend / only rising ramp)
-if(dec_s!=dec_e){
-  s_dec=(float)(h_dec/(dec_e-dec_s));
-}else{
-  s_dec=INT_MAX;//decreasing slope is also considered as positive
+for(count_pro=0;count_pro<NUM_PRO;count_pro++){
+  if(dec_s[count_pro]!=dec_e[count_pro]){
+    s_dec[count_pro]=(float)(h_dec[count_pro]/(dec_e[count_pro]-dec_s[count_pro]));
+  }else{
+    s_dec[count_pro]=INT_MAX;//decreasing slope is also considered as positive
+  }
 }
 
 //calculate peak height
-  if(p[inc_s]>p[dec_e]){
-    h_peak=p[center]-p[inc_s]+((p[inc_s]-p[dec_e])*(center-inc_s)/w_peak);
-  }else if(p[inc_s]<p[dec_e]){
-    h_peak=p[center]-p[dec_e]+((p[dec_e]-p[inc_s])*(dec_e-center)/w_peak);
+for(count_pro=0;count_pro<NUM_PRO;count_pro++){
+  if(p[count_pro][inc_s[count_pro]]>p[count_pro][dec_e[count_pro]]){
+    h_peak[count_pro]=p[count_pro][center[count_pro]]-p[count_pro][inc_s[count_pro]]+((p[count_pro][inc_s[count_pro]]-p[count_pro][dec_e[count_pro]])*(center[count_pro]-inc_s[count_pro])/w_peak[count_pro]);
+  }else if(p[inc_s[count_pro]]<p[dec_e[count_pro]]){
+    h_peak[count_pro]=p[count_pro][center[count_pro]]-p[count_pro][dec_e[count_pro]]+((p[count_pro][dec_e[count_pro]]-p[count_pro][inc_s[count_pro]])*(dec_e[count_pro]-center[count_pro])/w_peak[count_pro]);
   }else{  
-    h_peak=p[center]-p[inc_s];
+    h_peak[count_pro]=p[count_pro][center[count_pro]]-p[count_pro][inc_s[count_pro]];
   }
+}
 
+for(count_pro=0;count_pro<NUM_PRO;count_pro++){
+  if(!w_top[count_pro] && !w_peak[count_pro] && !h_inc[count_pro] && !h_dec[count_pro]){
+    s_inc[count_pro]=0;
+    s_dec[count_pro]=0;
+    h_peak[count_pro]=0;
+    center[count_pro]=ELEMENT/2;
+  }
+}
 
+for(count_pro=0;count_pro<NUM_PRO;count_pro++){
+  
+}
 fprintf(stderr,"start calculate properties...\n");
-fprintf(stderr,"inc_s=%d inc_e=%d dec_s=%d dec_e=%d center=%d  \n",inc_s,inc_e,dec_s,dec_e,center);
-fprintf(stderr,"w_top is:%d \n",w_top);
-fprintf(stderr,"w_peak is:%d \n",w_peak);
-fprintf(stderr,"h_inc is:%d \n",h_inc);
-fprintf(stderr,"h_dec is:%d \n",h_dec);
-fprintf(stderr,"s_inc is:%f \n",s_inc);
-fprintf(stderr,"s_dec is:%f \n",s_dec);
-fprintf(stderr,"h_peak is:%f \n",h_peak);
+/*
+fprintf(stderr,"\n\ndec_s: \n");
+for(i=0;i<NUM_PRO;i++){
+  fprintf(stderr,"%d ",h_inc[i]);
+}
+
+fprintf(stderr,"\ninc_s: \n");
+for(i=0;i<NUM_PRO;i++){
+  fprintf(stderr,"%d ",inc_s[i]);
+}
+
+fprintf(stderr,"\nmax: \n");
+for(i=0;i<NUM_PRO;i++){
+  fprintf(stderr,"%d ",max[i]);
+}
+
+fprintf(stderr,"\ns_inc: \n");
+for(i=0;i<NUM_PRO;i++){
+  fprintf(stderr,"%f ",s_inc[i]);
+}
+
+fprintf(stderr,"\ns_dec: \n");
+for(i=0;i<NUM_PRO;i++){
+  fprintf(stderr,"%f ",s_dec[i]);
+}
+
+fprintf(stderr,"\nw_top: \n");
+for(i=0;i<NUM_PRO;i++){
+  fprintf(stderr,"%d ",w_top[i]);
+}
+
+fprintf(stderr,"\nw_peak: \n");
+for(i=0;i<NUM_PRO;i++){
+  fprintf(stderr,"%d ",w_peak[i]);
+}
+
+fprintf(stderr,"\nh_peak: \n");
+for(i=0;i<NUM_PRO;i++){
+  fprintf(stderr,"%d ",h_peak[i]);
+}
+fprintf(stderr,"\n");
+*/
+
+i=11;
+fprintf(stderr,"gap[] \n");
+for(j=0;j<ELEMENT;j++){
+  fprintf(stderr,"%d ",gap[i][j]);
+}
+fprintf(stderr,"\n");
+
+fprintf(stderr,"inc[] \n");
+for(j=0;j<ELEMENT;j++){
+  fprintf(stderr,"%d ",inc[i][j]);
+}
+fprintf(stderr,"\n");
+
+fprintf(stderr,"gap_d[] \n");
+for(j=0;j<ELEMENT;j++){
+  fprintf(stderr,"%d ",gap_dec[i][j]);
+}
+fprintf(stderr,"\n");
+
+fprintf(stderr,"dec[] \n");
+for(j=0;j<ELEMENT;j++){
+  fprintf(stderr,"%d ",dec[i][j]);
+}
+fprintf(stderr,"\n");
+
+fprintf(stderr,"inc_s=%d inc_e=%d dec_s=%d dec_e=%d center=%d  \n",inc_s[i],inc_e[i],dec_s[i],dec_e[i],center[i]);
+fprintf(stderr,"w_top is:%d \n",w_top[i]);
+fprintf(stderr,"w_peak is:%d \n",w_peak[i]);
+fprintf(stderr,"h_inc is:%d \n",h_inc[i]);
+fprintf(stderr,"h_dec is:%d \n",h_dec[i]);
+fprintf(stderr,"s_inc is:%f \n",s_inc[i]);
+fprintf(stderr,"s_dec is:%f \n",s_dec[i]);
+fprintf(stderr,"h_peak is:%f \n",h_peak[i]);
 
 //VXclose(VXin);
 //VXclose(VXout);
 exit(0);
 }
+
+
+
 
 
