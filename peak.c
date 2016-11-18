@@ -1,9 +1,10 @@
 #include "VisXV4.h"          /* VisX structure include file     */
 #include "Vutil.h"           /* VisX utility header files       */
 #include <string.h>
+#include <math.h> 
 //#include <stdlib.h>
 #include <stdbool.h>
-#include <limits.h>
+
 #define MIN_DIFF 2
 #define MIN_HEIGHT 3
 #define MAX_GAP 3
@@ -52,7 +53,7 @@ x_in=atoi(X);
 
 fprintf(stderr,"output profile\n");
 //profile scanning
-for(k = 0; k<ELEMENT; k++){
+for(k = 0; k<NUM_PRO; k++){
    theta = 6 * k;  //angle
    if(theta<45 || theta >135){
     i = 0;
@@ -86,15 +87,15 @@ for (k = 0; k < NUM_PRO; k++){
 }
 
 int count=0;
-i=11;
-//for(i=0;i<NUM_PRO;i++){
+//i=11;
+for(i=0;i<NUM_PRO;i++){
   for(j=0;j<ELEMENT;j++){
     count++;
     fprintf(stderr,"%d ",p[i][j]);
     }
     fprintf(stderr,"\n");
     
-//}
+}
 
 fprintf(stderr,"counttotal=%d \n",count);
 
@@ -401,10 +402,12 @@ fprintf(stderr,"s_dec Is:%f \n",s_dec[I]);
 fprintf(stderr,"h_peak Is:%f \n",h_peak[I]);
 
 
-int twidths[NUM_PRO]; //top width
-int pwidths[NUM_PRO];//peak width
-int rheights[NUM_PRO*2];//ramp height
+float twidths[NUM_PRO]; //top width
+float pwidths[NUM_PRO];//peak width
+float rheights[NUM_PRO*2];//ramp height
+float pheights[NUM_PRO];//peak height
 float rslopes[NUM_PRO*2];//ramp slope
+
 
 int ct=0;
 for(count_pro=0;count_pro<NUM_PRO;count_pro++){
@@ -415,19 +418,26 @@ for(count_pro=0;count_pro<NUM_PRO;count_pro++){
     rheights[2*ct+1]=h_dec[count_pro];
     rslopes[2*ct]=s_inc[count_pro];
     rslopes[2*ct+1]=s_dec[count_pro];
+    pheights[ct]=h_peak[count_pro];
     ct++;
     
   }
 }
 fprintf(stderr,"\n%d elements in twidths[]: \n",ct);
 for(i=0;i<ct;i++){
-  fprintf(stderr,"%d ",twidths[i]);
+  fprintf(stderr,"%f ",twidths[i]);
 }
 fprintf(stderr,"\n");  
 
 fprintf(stderr,"\n%d elements in pwidths[]: \n",ct);
 for(i=0;i<ct;i++){
-  fprintf(stderr,"%d ",pwidths[i]);
+  fprintf(stderr,"%f ",pwidths[i]);
+}
+fprintf(stderr,"\n");
+
+fprintf(stderr,"\n%d elements in rheights[]: \n",2*ct);
+for(i=0;i<2*ct;i++){
+  fprintf(stderr,"%f ",rheights[i]);
 }
 fprintf(stderr,"\n");
 
@@ -437,26 +447,94 @@ for(i=0;i<2*ct;i++){
 }
 fprintf(stderr,"\n");
 
+fprintf(stderr,"\n%d elements in pheights[]: \n",ct);
+for(i=0;i<ct;i++){
+  fprintf(stderr,"%f ",pheights[i]);
+}
+fprintf(stderr,"\n");
+
 //calculate profile property statistics
-float mpwidths,mtwidths;
-float sdpwidths,sdtwidths,sdrslopes;
+float mpwidths,mtwidths,mrslopes,mrheights,mpheights;
+float sdpwidths,sdtwidths,sdrslopes,sdrheights,sdpheights;
 float cvrheights,cvpheights;
 
-float sum1=0;//calculate mtwidths
+//twidths
+float sum1=0,var1=0;//calculate mean twidths
 for(i=0;i<ct;i++){
   sum1+=twidths[i];
 }
-mtwidths=sum1/ct;
+mtwidths=sum1/(float)ct;
 
-float sum2=0;
+for(j=0;j<ct;j++){
+  var1+=(twidths[j]-mtwidths)*(twidths[j]-mtwidths);
+}
+sdtwidths=sqrt(var1/(float)ct);
+
+//pwidths
+float sum2=0,var2=0;//calculate mean pwidths
 for(i=0;i<ct;i++){
   sum2+=pwidths[i];
 }
-mpwidths=sum2/ct;
+mpwidths=sum2/(float)ct;
 
+for(j=0;j<ct;j++){
+  var2+=(pwidths[j]-mpwidths)*(pwidths[j]-mpwidths);
+}
+sdpwidths=sqrt(var2/(float)ct);
 
-fprintf(stderr,"\nmtwidhts=%f \n",mtwidths);
-fprintf(stderr,"mpwidhts=%f \n",mpwidths);
+//rslopes
+float sum3=0,var3=0;//calculate mean rslopes
+for(i=0;i<2*ct;i++){
+  sum3+=rslopes[i];
+}
+mrslopes=sum3/(2*(float)ct);
+
+for(j=0;j<2*ct;j++){
+  var3+=(rslopes[j]-mrslopes)*(rslopes[j]-mrslopes);
+}
+sdrslopes=sqrt(var3/(2*(float)ct));
+
+//rheights
+float sum4=0,var4=0;//calculate mean mrheights
+for(i=0;i<2*ct;i++){
+  sum4+=rheights[i];
+}
+mrheights=sum4/(2*(float)ct);
+
+for(j=0;j<2*ct;j++){
+  var4+=(rheights[j]-mrheights)*(rheights[j]-mrheights);
+}
+sdrheights=sqrt(var4/(2*(float)ct));
+
+cvrheights=sdrheights/mrheights;
+
+//pheights
+float sum5=0,var5=0;//calculate mean mpheights
+for(i=0;i<ct;i++){
+  sum5+=pheights[i];
+}
+mpheights=sum5/(float)ct;
+
+for(j=0;j<ct;j++){
+  var5+=(pheights[j]-mpheights)*(pheights[j]-mpheights);
+}
+sdpheights=sqrt(var5/(float)ct);
+
+cvpheights=sdpheights/mpheights;
+
+fprintf(stderr,"\nsum1=%f \n",sum1);
+fprintf(stderr,"\nct=%d \n",ct);
+
+fprintf(stderr,"mpwidths=%f \n",mpwidths);
+fprintf(stderr,"sdpwidths=%f \n",sdpwidths);
+fprintf(stderr,"sdtwidths=%f \n",sdtwidths);
+fprintf(stderr,"\nmtwidths=%f \n",mtwidths);
+fprintf(stderr,"sdpwidths=%f \n",sdrslopes);
+
+fprintf(stderr,"sdrheights=%f \n",sdrheights);
+fprintf(stderr,"sdpheights=%f \n",sdpheights);
+fprintf(stderr,"cvrheights=%f \n",cvrheights);
+fprintf(stderr,"cvpheights=%f \n",cvpheights);
 //VXclose(VXin);
 //VXclose(VXout);
 exit(0);
