@@ -8,8 +8,10 @@
 #define MIN_HEIGHT 3
 #define MAX_GAP 3
 #define THRESH_TOP 1//the intensity range of the top
+#define SLOPE_MAX 500
 #define ELEMENT 31//number of elements in array p[]
 #define NUM_PRO 30//corresponds to 6 degree cross profile
+#define I 11//for test
 
 VXparam_t par[] =             /* command line structure            */
 { /* prefix, value,   description                         */   
@@ -109,9 +111,9 @@ for(i=0;i<NUM_PRO;i++){
   max[i]=0;
   max_d[i]=0;
   inc_s[i]=0;
-  inc_e[i]=0;
-  dec_s[i]=0;
-  dec_e[i]=0;
+  inc_e[i]=ELEMENT/2;
+  dec_s[i]=ELEMENT/2+1;
+  dec_e[i]=ELEMENT-1;
   center[i]=ELEMENT/2;
   stop[i]=0;
   count_gap[i]=0;
@@ -204,11 +206,9 @@ for(count_pro=0;count_pro<NUM_PRO;count_pro++){
   }
 }
 
-fprintf(stderr,"\ninc_s here is %d \n",inc[5][count_inc[5]-1]); 
 for(count_pro=0;count_pro<NUM_PRO;count_pro++){
   inc_s[count_pro]=inc[count_pro][count_inc[count_pro]-1];
 }
-fprintf(stderr,"\ninc_s here2 is %d \n",inc_s[5]); 
 
 //store decreasing ramp's indexes in dec[]
 for(count_pro=0;count_pro<NUM_PRO;count_pro++){
@@ -231,7 +231,9 @@ if(gap_dec[count_pro][count_gapd[count_pro]-1]-gap_dec[count_pro][count_gapd[cou
 }
 
 for(count_pro=0;count_pro<NUM_PRO;count_pro++){
+  if(dec[count_pro][count_dec[count_pro]-1]!=0){
   dec_e[count_pro]=dec[count_pro][count_dec[count_pro]-1];
+  }
 }
     
 
@@ -242,7 +244,7 @@ float s_inc[NUM_PRO],s_dec[NUM_PRO]; //increasing and decreasing slope
 
 for(i=0;i<NUM_PRO;i++){
   w_peak[i]=0;
-  w_top[i]=0;
+  w_top[i]=1;
   h_inc[i]=0;
   h_dec[i]=0;
   h_peak[i]=0;
@@ -266,7 +268,11 @@ for(count_pro=0;count_pro<NUM_PRO;count_pro++){
 }
 
 for(count_pro=0;count_pro<NUM_PRO;count_pro++){
-  w_top[count_pro]=dec_s[count_pro]-inc_e[count_pro];
+  if(dec_s[count_pro]!=inc_e[count_pro]){
+    w_top[count_pro]=dec_s[count_pro]-inc_e[count_pro];
+  }else{
+    w_top[count_pro]=1;
+  }
   w_peak[count_pro]=dec_e[count_pro]-inc_s[count_pro];
   h_inc[count_pro]=p[count_pro][inc_e[count_pro]]-p[count_pro][inc_s[count_pro]];
   h_dec[count_pro]=p[count_pro][dec_s[count_pro]]-p[count_pro][dec_e[count_pro]];
@@ -278,7 +284,7 @@ for(count_pro=0;count_pro<NUM_PRO;count_pro++){
   if(inc_s[count_pro]!=inc_e[count_pro]){
     s_inc[count_pro]=(float)(h_inc[count_pro]/(inc_e[count_pro]-inc_s[count_pro]));
   }else{
-    s_inc[count_pro]=INT_MAX;
+    s_inc[count_pro]=SLOPE_MAX;
   }
 }
 
@@ -287,7 +293,7 @@ for(count_pro=0;count_pro<NUM_PRO;count_pro++){
   if(dec_s[count_pro]!=dec_e[count_pro]){
     s_dec[count_pro]=(float)(h_dec[count_pro]/(dec_e[count_pro]-dec_s[count_pro]));
   }else{
-    s_dec[count_pro]=INT_MAX;//decreasing slope is also considered as positive
+    s_dec[count_pro]=SLOPE_MAX;//decreasing slope is also considered as positive
   }
 }
 
@@ -305,7 +311,7 @@ for(count_pro=0;count_pro<NUM_PRO;count_pro++){
 for(count_pro=0;count_pro<NUM_PRO;count_pro++){
   if(!w_top[count_pro] && !w_peak[count_pro] && !h_inc[count_pro] && !h_dec[count_pro]){
     s_inc[count_pro]=0;
-    s_dec[count_pro]=0;
+    s_dec[count_pro]=ELEMENT-1;
     h_peak[count_pro]=0;
     center[count_pro]=ELEMENT/2;
   }
@@ -314,7 +320,7 @@ for(count_pro=0;count_pro<NUM_PRO;count_pro++){
 for(count_pro=0;count_pro<NUM_PRO;count_pro++){
   
 }
-fprintf(stderr,"start calculate properties...\n");
+fprintf(stderr,"start calculating properties...\n");
 /*
 fprintf(stderr,"\n\ndec_s: \n");
 for(i=0;i<NUM_PRO;i++){
@@ -358,40 +364,99 @@ for(i=0;i<NUM_PRO;i++){
 fprintf(stderr,"\n");
 */
 
-i=11;
+//test for single profile
 fprintf(stderr,"gap[] \n");
-for(j=0;j<ELEMENT;j++){
-  fprintf(stderr,"%d ",gap[i][j]);
+for(j=0;j<count_gap[I];j++){
+  fprintf(stderr,"%d ",gap[I][j]);
 }
 fprintf(stderr,"\n");
 
 fprintf(stderr,"inc[] \n");
-for(j=0;j<ELEMENT;j++){
-  fprintf(stderr,"%d ",inc[i][j]);
+for(j=0;j<count_inc[I];j++){
+  fprintf(stderr,"%d ",inc[I][j]);
 }
 fprintf(stderr,"\n");
 
 fprintf(stderr,"gap_d[] \n");
-for(j=0;j<ELEMENT;j++){
-  fprintf(stderr,"%d ",gap_dec[i][j]);
+for(j=0;j<count_gapd[I];j++){
+  fprintf(stderr,"%d ",gap_dec[I][j]);
 }
 fprintf(stderr,"\n");
 
 fprintf(stderr,"dec[] \n");
-for(j=0;j<ELEMENT;j++){
-  fprintf(stderr,"%d ",dec[i][j]);
+for(j=0;j<count_dec[I];j++){
+  fprintf(stderr,"%d ",dec[I][j]);
+}
+fprintf(stderr,"\n");
+fprintf(stderr,"number in inc[] %d \n",count_inc[I]);
+
+fprintf(stderr,"number in dec[] %d \n",count_dec[I]);
+fprintf(stderr,"Inc_s=%d Inc_e=%d dec_s=%d dec_e=%d center=%d  \n",inc_s[I],inc_e[I],dec_s[I],dec_e[I],center[I]);
+fprintf(stderr,"w_top Is:%d \n",w_top[I]);
+fprintf(stderr,"w_peak Is:%d \n",w_peak[I]);
+fprintf(stderr,"h_Inc Is:%d \n",h_inc[I]);
+fprintf(stderr,"h_dec Is:%d \n",h_dec[I]);
+fprintf(stderr,"s_Inc Is:%f \n",s_inc[I]);
+fprintf(stderr,"s_dec Is:%f \n",s_dec[I]);
+fprintf(stderr,"h_peak Is:%f \n",h_peak[I]);
+
+
+int twidths[NUM_PRO]; //top width
+int pwidths[NUM_PRO];//peak width
+int rheights[NUM_PRO*2];//ramp height
+float rslopes[NUM_PRO*2];//ramp slope
+
+int ct=0;
+for(count_pro=0;count_pro<NUM_PRO;count_pro++){
+  if(count_inc[count_pro] && count_dec[count_pro]){
+    twidths[ct]=w_top[count_pro];
+    pwidths[ct]=w_peak[count_pro];
+    rheights[2*ct]=h_inc[count_pro];
+    rheights[2*ct+1]=h_dec[count_pro];
+    rslopes[2*ct]=s_inc[count_pro];
+    rslopes[2*ct+1]=s_dec[count_pro];
+    ct++;
+    
+  }
+}
+fprintf(stderr,"\n%d elements in twidths[]: \n",ct);
+for(i=0;i<ct;i++){
+  fprintf(stderr,"%d ",twidths[i]);
+}
+fprintf(stderr,"\n");  
+
+fprintf(stderr,"\n%d elements in pwidths[]: \n",ct);
+for(i=0;i<ct;i++){
+  fprintf(stderr,"%d ",pwidths[i]);
 }
 fprintf(stderr,"\n");
 
-fprintf(stderr,"inc_s=%d inc_e=%d dec_s=%d dec_e=%d center=%d  \n",inc_s[i],inc_e[i],dec_s[i],dec_e[i],center[i]);
-fprintf(stderr,"w_top is:%d \n",w_top[i]);
-fprintf(stderr,"w_peak is:%d \n",w_peak[i]);
-fprintf(stderr,"h_inc is:%d \n",h_inc[i]);
-fprintf(stderr,"h_dec is:%d \n",h_dec[i]);
-fprintf(stderr,"s_inc is:%f \n",s_inc[i]);
-fprintf(stderr,"s_dec is:%f \n",s_dec[i]);
-fprintf(stderr,"h_peak is:%f \n",h_peak[i]);
+fprintf(stderr,"\n%d elements in rslopes[]: \n",2*ct);
+for(i=0;i<2*ct;i++){
+  fprintf(stderr,"%f ",rslopes[i]);
+}
+fprintf(stderr,"\n");
 
+//calculate profile property statistics
+float mpwidths,mtwidths;
+float sdpwidths,sdtwidths,sdrslopes;
+float cvrheights,cvpheights;
+
+float sum1=0;//calculate mtwidths
+for(i=0;i<ct;i++){
+  sum1+=twidths[i];
+}
+mtwidths=sum1/ct;
+
+float sum2=0;
+for(i=0;i<ct;i++){
+  sum2+=pwidths[i];
+}
+mpwidths=sum2/ct;
+
+
+fprintf(stderr,"\nmtwidhts=%f \n",mtwidths);
+fprintf(stderr,"mpwidhts=%f \n",mpwidths);
 //VXclose(VXin);
 //VXclose(VXout);
 exit(0);
