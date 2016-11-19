@@ -4,6 +4,9 @@
 #include <math.h> 
 //#include <stdlib.h>
 #include <stdbool.h>
+#define ARRAY_WIDTH 3
+#define MAX_LMR 40000
+#define ARRAYSIZE(x)  (sizeof(x)/sizeof(*(x)))
 
 #define MIN_DIFF 2
 #define MIN_HEIGHT 3
@@ -14,22 +17,22 @@
 #define NUM_PRO 30//corresponds to 6 degree cross profile
 #define I 11//for test
 
-VXparam_t par[] =             /* command line structure            */
-{ /* prefix, value,   description                         */   
+/*
+VXparam_t par[] =             // command line structure            
+{ //prefix, value,   description                          
 {    "y=",    0,   " input y coordinate"},
 {    "x=",    0,  " input x coordinate"},
-{     0,       0,   0}  /* list termination */
+{     0,       0,   0}  // list termination 
 };
-#define  Y   par[0].val
-#define  X   par[1].val
+*/
+
 
 
 int main(int argc, char** argv){
-Vfstruct (im);                      /* i/o image structure          */
-Vfstruct (tm);                      /* temp image structure         */
-//Vfread(&im,"image10_pre.vx");
-Vfread(&im,"img_pre.vx");
-Vfembed(&tm,&im,1,1,1,1);
+Vfstruct (im);                      // i/o image structure          
+Vfread(&im,"image10_pre.vx");
+//Vfread(&im,"img_pre.vx");
+
 int p[NUM_PRO][ELEMENT];
 
 int count_pro=0,count_ele=0;
@@ -41,15 +44,78 @@ int gap_dec[NUM_PRO][ELEMENT],dec[NUM_PRO][ELEMENT],count_gapd[NUM_PRO],count_de
 
 int xoffset[NUM_PRO][ELEMENT];
 int yoffset[NUM_PRO][ELEMENT];
+
+long array_in=0;
+long label_value=0;
 int y_in=0,x_in=0;
 int xx=0,yy=0;//count element
 double theta=0;
-int k=0,i=0,j=0;
+long k=0,i=0,j=0;
 
-VXparse(&argc,&argv,par);
- 
-y_in=atoi(Y);
-x_in=atoi(X);
+//VXparse(&argc,&argv,par);
+
+long array[MAX_LMR][ARRAY_WIDTH];
+long idx = 0;
+long time=0;
+
+size_t max_size = (size_t)-1;
+fprintf(stderr,"max_size=%ld \n",max_size);
+
+fprintf(stderr,"before open lmrout.csv\n");
+FILE *fp_in;
+FILE *fp_out;
+fp_in=fopen("lmrout.csv","r");
+
+if(!fp_in){
+  fprintf(stderr,"failed to open local maximum record file!\n");
+}else{
+  char buffer[MAX_LMR],*ptr;
+  size_t read_i,read_j,read_k;
+  
+  
+  //array[idx]=malloc(sizeof(array));
+  //for(j=0,ptr=buffer;j<ARRAY_WIDTH;j++,ptr++){
+  while(fgets(buffer,sizeof buffer,fp_in)!=0){
+    for(read_j=0,ptr=buffer;read_j<ARRAYSIZE(*array);++read_j,++ptr){
+      array[idx][read_j]=strtol(ptr,&ptr,10);
+      
+      fprintf(stderr,"array[%ld][%ld]=%ld\n",idx,read_j,array[idx][read_j]);
+      idx++;
+      
+    }
+    time++;
+  }
+}
+
+//fprintf(stderr,"time=%d\n",sizeof);
+fclose(fp_in);
+
+fprintf(stderr,"after opening lmrout.csv\n");
+fprintf(stderr,"idx=%d\n",idx);
+fprintf(stderr,"the array got is\n");
+for(i=0;i<idx;i++){
+  for(j=0;j<ARRAY_WIDTH;j++){
+    fprintf(stderr,"%d ",array[i][j]);
+   }
+   fprintf(stderr,"\n");
+}
+
+fp_out=fopen("peakout.csv","w");
+if(!fp_out){
+  fprintf(stderr,"failed to open peakoutput for writing!\n");
+}
+
+//for(array_in=0;array_in<idx;array_in++){
+for(array_in=0;array_in<idx;array_in++){
+  y_in=(int)array[array_in][0];
+  x_in=(int)array[array_in][1];
+  label_value=array[array_in][2];
+  
+  if(y_in>=im.yhi-15 || y_in<=im.ylo+15 || x_in>=im.xhi-15 || x_in<=im.xlo+15)  continue;
+
+
+//y_in=atoi(Y);
+//x_in=atoi(X);
 
 fprintf(stderr,"output profile\n");
 //profile scanning
@@ -72,10 +138,8 @@ for(k = 0; k<NUM_PRO; k++){
          i++;
        }
 		}
-	
 }
 	
-
 //Get their pixel values
 for (k = 0; k < NUM_PRO; k++){
     int xx,yy;
@@ -322,7 +386,8 @@ for(count_pro=0;count_pro<NUM_PRO;count_pro++){
   
 }
 fprintf(stderr,"start calculating properties...\n");
-/*
+
+
 fprintf(stderr,"\n\ndec_s: \n");
 for(i=0;i<NUM_PRO;i++){
   fprintf(stderr,"%d ",h_inc[i]);
@@ -363,9 +428,10 @@ for(i=0;i<NUM_PRO;i++){
   fprintf(stderr,"%d ",h_peak[i]);
 }
 fprintf(stderr,"\n");
-*/
+
 
 //test for single profile
+/*
 fprintf(stderr,"gap[] \n");
 for(j=0;j<count_gap[I];j++){
   fprintf(stderr,"%d ",gap[I][j]);
@@ -400,7 +466,7 @@ fprintf(stderr,"h_dec Is:%d \n",h_dec[I]);
 fprintf(stderr,"s_Inc Is:%f \n",s_inc[I]);
 fprintf(stderr,"s_dec Is:%f \n",s_dec[I]);
 fprintf(stderr,"h_peak Is:%f \n",h_peak[I]);
-
+*/
 
 float twidths[NUM_PRO]; //top width
 float pwidths[NUM_PRO];//peak width
@@ -535,9 +601,14 @@ fprintf(stderr,"sdrheights=%f \n",sdrheights);
 fprintf(stderr,"sdpheights=%f \n",sdpheights);
 fprintf(stderr,"cvrheights=%f \n",cvrheights);
 fprintf(stderr,"cvpheights=%f \n",cvpheights);
+
 //VXclose(VXin);
 //VXclose(VXout);
+fprintf(fp_out,"%d,%d,%ld,%f,%f,%f,%f,%f,%f,%f\n",y_in,x_in,label_value,mpwidths,sdpwidths,mtwidths,sdtwidths,sdrslopes,cvrheights,cvpheights);
+}
+fclose(fp_out);
 exit(0);
+
 }
 
 
