@@ -1,25 +1,21 @@
 #include "VisXV4.h"          /* VisX structure include file     */
 #include "Vutil.h"           /* VisX utility header files       */
-#include <string.h>
-#include <stdlib.h>
 #include <stdbool.h>
 
-#define MAX_Q 30000
-#define NUM_LMR 30000
-#define NUM_V 30000
+#define MAX_Q 100
+#define NUM_LMR 60000
 #define MIN_DIFF 2
 #define MIN_HEIGHT 3
 #define MAX_GAP 3
 
 
-VXparam_t par[] =             /* command line structure            */
-{ /* prefix, value,   description                         */   
+VXparam_t par[] =       
+{ //prefix, value,  description                           
 {    "if=",    0,   " input file"},
-{    "of=",    0,   " output file "},
-{     0,       0,   0}  /* list termination */
+{     0,       0,   0}  
 };
+
 #define  IVAL   par[0].val
-#define  OVAL   par[1].val
 
 
 main(argc, argv)
@@ -29,44 +25,33 @@ char *argv[];
 Vfstruct (im);                      /* i/o image structure          */
 Vfstruct (tm);                      /* temp image structure         */
 Vfread(&im,"image10_pre.vx");
-//Vfread(&im,"small.vx");
+//Vfread(&im,"small.vx");//for test
 Vfembed(&tm,&im,0,0,0,0);
 //Vfnewim(&tm,im.type,im.bbx,im.chan);
 long countLMR=0;
 int queue[MAX_Q];
 long front=0,rear=-1,itemCount=0;
-int lmrX[NUM_LMR],lmrY[NUM_LMR];
-long label_value=0;
 long label[im.yhi][im.xhi];
 int y_label=0,x_label=0;
 
 int y=0,x=0;//for image index
 int m=0,n=0;//count local maximum,m for y axis, n for x axis
 
+struct Outdata{
+    int x;
+    int y;
+    long label;
+
+};
+struct Outdata Out[NUM_LMR];
+
+
 for(y_label=im.ylo;y_label<=im.yhi;y_label++)
   for(x_label=im.xlo;x_label<=im.xhi;x_label++){
       label[y_label][x_label]=0;
   }
- /*
- fprintf(stderr,"\ninitial label:\n");//show intialized labels
-  for(y_label=im.ylo;y_label<=im.yhi;y_label++){
-    for(x_label=im.xlo;x_label<=im.xhi;x_label++){
-      fprintf(stderr,"%d ",im.u[y_label][x_label]);}
-      fprintf(stderr,"\n");
-    
-  }
-    fprintf(stderr,"\n");
 
-fprintf(stderr,"\nimage is:\n");
-  for(y_label=im.ylo;y_label<=im.yhi;y_label++){//show image pixels
-    for(x_label=im.xlo;x_label<=im.xhi;x_label++){
-      fprintf(stderr,"%d ",tm.u[y_label][x_label]);}
-      fprintf(stderr,"\n");
-    
-  }
-    fprintf(stderr,"\n");
-*/
-/*define basic operations of queue*/
+//define basic operations of queue
 bool isEmpty() {
    return itemCount == 0;
 }
@@ -99,19 +84,32 @@ int removeData() {
    return data;  
 }
 
-
-/*find the rough region to search*/
+int i=0,j=0;
 int row_start=im.ylo+1,row_end=im.yhi-1;
 int col_start=im.xlo+1,col_end=im.xhi-1;
 
+//find the rough region to search
+for(i=0;i<im.xhi;i++){
+  if(im.u[im.yhi/2][i]<240){
+				col_start=i;
+				break;
+			}
+}
+
+for(i=im.xhi-1;i>0;i--){
+   if(im.u[im.yhi/2][i]<240){
+			col_end=i;
+			break;
+    }
+}
+   
+
 //use breadth-first search to find local maximum regions
 long code=0;
-int i=0,j=0;
 
 int offset=im.xhi-im.xlo+1;
-
 int countQ=0;//index of element in queue
-label_value=1;
+long label_value=1;
 
 fprintf(stderr,"offset=%d\n",offset);
 for(y=row_start;y<=row_end;y++) //traverse all the pixels in the image
@@ -125,7 +123,7 @@ for(y=row_start;y<=row_end;y++) //traverse all the pixels in the image
 
   && tm.u[y][x]>=tm.u[y][x-1] && tm.u[y][x]>=tm.u[y][x+1] 
 
-  && tm.u[y][x]>=tm.u[y+1][x-1] && tm.u[y][x]>=tm.u[y+1][x] && tm.u[y][x]>=tm.u[y+1][x+1] && !label[y][x] ){
+  && tm.u[y][x]>=tm.u[y+1][x-1] && tm.u[y][x]>=tm.u[y+1][x] && tm.u[y][x]>=tm.u[y+1][x+1]){
      
    
      code=y*offset+x;
@@ -137,44 +135,60 @@ for(y=row_start;y<=row_end;y++) //traverse all the pixels in the image
        i=code/offset;//row
        j=code%offset;//column
        if(!label[i][j]){
-         label[i][j]=label_value;
-         fprintf(stderr,"i=%d j=%d label_value=%d pixel_value=%d\n",i,j,label_value,tm.u[i][j]);
-    	   if(j>col_start && i>row_start && tm.u[i][j]==tm.u[i-1][j-1] && !label[i-1][j-1]){ //left-down
-          label[i-1][j-1]=label_value;
-           insert((i-1)*offset+j-1);
+            label[i][j]=label_value;
+            Out[countLMR].x=j;
+            Out[countLMR].y=i;
+            Out[countLMR].label=label_value;
+            countLMR++;
+         fprintf(stderr,"i=%d j=%d label_value=%d pixel_value=%d\n\n",i,j,label_value,tm.u[i][j]);
+    	   if(j>col_start+1 && i>row_start+1 && tm.u[i][j]==tm.u[i-1][j-1] && !label[i-1][j-1] && 
+         tm.u[i-1][j-1]>=tm.u[i-2][j-2] && tm.u[i-1][j-1]>=tm.u[i-2][j-1] && tm.u[i-1][j-1]>=tm.u[i-2][j] && tm.u[i-1][j-1]>=tm.u[i-1][j]
+         && tm.u[i-1][j-1]>=tm.u[i][j] && tm.u[i-1][j-1]>=tm.u[i][j-1] &&tm.u[i-1][j-1]>=tm.u[i][j-2]&&tm.u[i-1][j-1]>=tm.u[i-1][j-2]){ //left-down
+           
+              insert((i-1)*offset+j-1);
+           
         }
-        if(i>row_start && tm.u[i][j]==tm.u[i-1][j] && !label[i-1][j] ){ //down
-           im.u[i-1][j]=label_value;
+        if(i>row_start && tm.u[i][j]==tm.u[i-1][j] && !label[i-1][j]&&
+        tm.u[i-1][j]>=tm.u[i-2][j-1] && tm.u[i-1][j]>=tm.u[i-2][j] && tm.u[i-1][j]>=tm.u[i-2][j+1] && tm.u[i-1][j]>=tm.u[i-1][j+1]
+        && tm.u[i-1][j]>=tm.u[i][j+1] && tm.u[i-1][j]>=tm.u[i][j] &&tm.u[i-1][j]>=tm.u[i][j-1]&&tm.u[i-1][j]>=tm.u[i-1][j-1]){ //down
+         
            insert((i-1)*offset+j);
+           
         }
         
-        if(i>row_start && j<col_end && tm.u[i][j]==tm.u[i-1][j+1]&& !label[i-1][j+1]){//right-down
-           label[i-1][j+1]=label_value;
+        if(i>row_start+1 && j<col_end-1 && tm.u[i][j]==tm.u[i-1][j+1]&& !label[i-1][j+1] &&
+        tm.u[i-1][j+1]>=tm.u[i-2][j] && tm.u[i-1][j+1]>=tm.u[i-2][j+1] && tm.u[i-1][j+1]>=tm.u[i-2][j+2] && tm.u[i-1][j+1]>=tm.u[i-1][j+2]
+        && tm.u[i-1][j+1]>=tm.u[i][j+2] && tm.u[i-1][j+1]>=tm.u[i][j+1] &&tm.u[i-1][j+1]>=tm.u[i-1][j]){//right-down
            insert((i-1)*offset+(j+1));
 
         }
-        if(j<col_end && tm.u[i][j]==tm.u[i][j+1]&& !label[i][j+1]){//right
-           label[i][j+1]=label_value;
+        if(j<col_end-1 && tm.u[i][j]==tm.u[i][j+1]&& !label[i][j+1] &&
+        tm.u[i][j+1]>=tm.u[i-1][j] && tm.u[i][j+1]>=tm.u[i-1][j+1] && tm.u[i][j+1]>=tm.u[i-1][j+2] && tm.u[i][j+1]>=tm.u[i][j+2]
+        && tm.u[i][j+1]>=tm.u[i+1][j+2] && tm.u[i][j+1]>=tm.u[i+1][j+1] &&tm.u[i][j+1]>=tm.u[i+1][j]){//right
            insert((i)*offset+(j+1));
         }
-        if(i<row_end && j<col_end && tm.u[i][j]==tm.u[i+1][j+1]&& !label[i+1][j+1]){//up-right
-            label[i+1][j+1]=label_value;
+        if(i<row_end-1 && j<col_end-1 && tm.u[i][j]==tm.u[i+1][j+1]&& !label[i+1][j+1] &&
+        tm.u[i+1][j+1]>=tm.u[i][j+1]  && tm.u[i+1][j+1]>=tm.u[i][j+2] && tm.u[i+1][j+1]>=tm.u[i+1][j+2]
+        && tm.u[i+1][j+1]>=tm.u[i+2][j+2] && tm.u[i+1][j+1]>=tm.u[i+2][j+1] &&tm.u[i+1][j+1]>=tm.u[i+2][j]&& tm.u[i+1][j+1]>=tm.u[i+1][j]){//up-right
             insert((i+1)*offset+(j+1));
          }
-          if(i<row_end && tm.u[i][j]==tm.u[i+1][j]&& !label[i+1][j]){//up
-            label[i+1][j]=label_value;
+        if(i<row_end-1 && tm.u[i][j]==tm.u[i+1][j]&& !label[i+1][j] &&
+        tm.u[i+1][j]>=tm.u[i][j+1] && tm.u[i+1][j]>=tm.u[i+1][j+1] && tm.u[i+1][j]>=tm.u[i+2][j+1]
+        && tm.u[i+1][j]>=tm.u[i+2][j] && tm.u[i+1][j]>=tm.u[i+2][j-1] &&tm.u[i+1][j]>=tm.u[i+1][j-1]&& tm.u[i+1][j]>=tm.u[i][j-1]){//up
             insert((i+1)*offset+j);
          }
-        if(i<row_end && j>col_start && tm.u[i][j]==tm.u[i+1][j-1] && !label[i+1][j-1]){//up-left
-            label[i+1][j-1]=label_value;
+        if(i<row_end-1 && j>col_start+1 && tm.u[i][j]==tm.u[i+1][j-1] && !label[i+1][j-1] &&
+        tm.u[i+1][j-1]>=tm.u[i][j-2] && tm.u[i+1][j-1]>=tm.u[i][j-1] && tm.u[i+1][j-1]>=tm.u[i+1][j]
+        && tm.u[i+1][j-1]>=tm.u[i+2][j] && tm.u[i+2][j-1]>=tm.u[i+2][j-1] &&tm.u[i+1][j-1]>=tm.u[i+2][j-2]&& tm.u[i+1][j-1]>=tm.u[i+1][j-2]){//up-left
             insert((i+1)*offset+(j-1));
          }
-        if(j>col_start && tm.u[i][j]==tm.u[i][j-1]&& !label[i][j-1]){//left
-           label[i][j-1]=label_value;
+        if(j>col_start+1 && tm.u[i][j]==tm.u[i][j-1]&& !label[i][j-1] && 
+        tm.u[i][j-1]>=tm.u[i-1][j-2] && tm.u[i][j-1]>=tm.u[i-1][j-1] && tm.u[i][j-1]>=tm.u[i-1][j]  
+        && tm.u[i][j-1]>=tm.u[i+1][j] && tm.u[i][j-1]>=tm.u[i+1][j-1] &&tm.u[i][j-1]>=tm.u[i+1][j-2]&&tm.u[i][j-1]>=tm.u[i][j-2]){//left
            insert((i)*offset+(j-1));
         }
       
-         fprintf(stderr,"elements in queue\n");
+         fprintf(stderr,"elements in queue: ");
          for(countQ=front;countQ<=rear;countQ++){
              fprintf(stderr,"%d ",queue[countQ]);
             
@@ -190,18 +204,20 @@ for(y=row_start;y<=row_end;y++) //traverse all the pixels in the image
    
 }
  fprintf(stderr,"end bfs\n");
-
   
-  fprintf(stderr,"\nprocessed label:\n");
-  for(y_label=row_start;y_label<=row_end;y_label++){
-    for(x_label=col_start;x_label<=col_end;x_label++){
-      fprintf(stderr,"%d ",label[y_label][x_label]); 
-      }
-      fprintf(stderr,"\n");
-   
-  }
-    fprintf(stderr,"\n");
- 
-    //Vfwrite(&im.OVAL);
-    exit(0);
-}  
+
+FILE *f=fopen("lmrout.csv","w"); 
+if(f==NULL) fprintf(stderr,"can't open such file\n");
+
+fprintf(stderr,"output is:\n");
+for(i=0;i<countLMR;i++){
+  fprintf(stderr,"%d,%d,%ld\n",Out[i].y,Out[i].x,Out[i].label);
+  fprintf(f,"%d,%d,%ld\n",Out[i].y,Out[i].x,Out[i].label);
+}
+
+ fclose(f); 
+ fprintf(stderr,"total lmr pixels:%ld\n",countLMR);
+ exit(0);
+}
+
+
