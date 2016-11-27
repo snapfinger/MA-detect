@@ -2,10 +2,10 @@
 #include "Vutil.h"           /* VisX utility header files       */
 #include <string.h>
 #include <math.h> 
-//#include <stdlib.h>
 #include <stdbool.h>
+
 #define ARRAY_WIDTH 3
-#define MAX_LMR 40000
+#define MAX_LMR 60000
 #define ARRAYSIZE(x)  (sizeof(x)/sizeof(*(x)))
 
 #define MIN_DIFF 2
@@ -17,21 +17,11 @@
 #define NUM_PRO 30//corresponds to 6 degree cross profile
 #define I 11//for test
 
-/*
-VXparam_t par[] =             // command line structure            
-{ //prefix, value,   description                          
-{    "y=",    0,   " input y coordinate"},
-{    "x=",    0,  " input x coordinate"},
-{     0,       0,   0}  // list termination 
-};
-*/
-
-
 
 int main(int argc, char** argv){
-Vfstruct (im);                      // i/o image structure          
+fprintf(stderr,"here");
+Vfstruct(im);
 Vfread(&im,"image10_pre.vx");
-//Vfread(&im,"img_pre.vx");
 
 int p[NUM_PRO][ELEMENT];
 
@@ -48,65 +38,58 @@ int yoffset[NUM_PRO][ELEMENT];
 long array_in=0;
 long label_value=0;
 int y_in=0,x_in=0;
-int xx=0,yy=0;//count element
+int xx=0,yy=0;//count element in angle;
 double theta=0;
 long k=0,i=0,j=0;
 
 //VXparse(&argc,&argv,par);
+long count_out=0;
+struct Outdata{
+    int x_out;
+    int y_out;
+    long label;
+    float mpwidths;
+    float sdpwidths;
+    float mtwidths;
+    float sdtwidths;
+    float sdrslopes;
+    float cvrheights;
+    float cvpheights;
+    float score;
+};
+struct Outdata Out[MAX_LMR];
+
 
 long array[MAX_LMR][ARRAY_WIDTH];
-long idx = 0;
-long time=0;
 
-size_t max_size = (size_t)-1;
-fprintf(stderr,"max_size=%ld \n",max_size);
-
-fprintf(stderr,"before open lmrout.csv\n");
 FILE *fp_in;
-FILE *fp_out;
+
 fp_in=fopen("lmrout.csv","r");
+char buffer[MAX_LMR],*ptr;
+size_t read_i,read_j,read_k;
 
 if(!fp_in){
   fprintf(stderr,"failed to open local maximum record file!\n");
 }else{
-  char buffer[MAX_LMR],*ptr;
-  size_t read_i,read_j,read_k;
-  
-  
-  //array[idx]=malloc(sizeof(array));
-  //for(j=0,ptr=buffer;j<ARRAY_WIDTH;j++,ptr++){
-  while(fgets(buffer,sizeof buffer,fp_in)!=0){
+  for(read_i=0;fgets(buffer,sizeof buffer,fp_in);read_i++){
     for(read_j=0,ptr=buffer;read_j<ARRAYSIZE(*array);++read_j,++ptr){
-      array[idx][read_j]=strtol(ptr,&ptr,10);
-      
-      fprintf(stderr,"array[%ld][%ld]=%ld\n",idx,read_j,array[idx][read_j]);
-      idx++;
-      
+      array[read_i][read_j]=strtol(ptr,&ptr,10); 
+      fprintf(stderr,"array[%ld][%ld]=%ld\n",read_i,read_j,array[read_i][read_j]);      
     }
-    time++;
   }
 }
 
-//fprintf(stderr,"time=%d\n",sizeof);
 fclose(fp_in);
 
-fprintf(stderr,"after opening lmrout.csv\n");
-fprintf(stderr,"idx=%d\n",idx);
-fprintf(stderr,"the array got is\n");
-for(i=0;i<idx;i++){
-  for(j=0;j<ARRAY_WIDTH;j++){
-    fprintf(stderr,"%d ",array[i][j]);
-   }
-   fprintf(stderr,"\n");
-}
 
-fp_out=fopen("peakout.csv","w");
-if(!fp_out){
-  fprintf(stderr,"failed to open peakoutput for writing!\n");
-}
 
-//for(array_in=0;array_in<idx;array_in++){
-for(array_in=0;array_in<idx;array_in++){
+fprintf(stderr,"read_i=%ld\n",read_i);
+
+//start read input csv file
+//input y,x axises, and corresponding label value
+for(array_in=0;array_in<read_i;array_in++){
+
+  fprintf(stderr,"\ncurrently processing No.%ld cell\n",array_in);
   y_in=(int)array[array_in][0];
   x_in=(int)array[array_in][1];
   label_value=array[array_in][2];
@@ -117,7 +100,7 @@ for(array_in=0;array_in<idx;array_in++){
 //y_in=atoi(Y);
 //x_in=atoi(X);
 
-fprintf(stderr,"output profile\n");
+//fprintf(stderr,"output profile\n");
 //profile scanning
 for(k = 0; k<NUM_PRO; k++){
    theta = 6 * k;  //angle
@@ -150,18 +133,6 @@ for (k = 0; k < NUM_PRO; k++){
        }
 }
 
-int count=0;
-//i=11;
-for(i=0;i<NUM_PRO;i++){
-  for(j=0;j<ELEMENT;j++){
-    count++;
-    fprintf(stderr,"%d ",p[i][j]);
-    }
-    fprintf(stderr,"\n");
-    
-}
-
-fprintf(stderr,"counttotal=%d \n",count);
 
 
 for(i=0;i<NUM_PRO;i++)
@@ -388,85 +359,6 @@ for(count_pro=0;count_pro<NUM_PRO;count_pro++){
 fprintf(stderr,"start calculating properties...\n");
 
 
-fprintf(stderr,"\n\ndec_s: \n");
-for(i=0;i<NUM_PRO;i++){
-  fprintf(stderr,"%d ",h_inc[i]);
-}
-
-fprintf(stderr,"\ninc_s: \n");
-for(i=0;i<NUM_PRO;i++){
-  fprintf(stderr,"%d ",inc_s[i]);
-}
-
-fprintf(stderr,"\nmax: \n");
-for(i=0;i<NUM_PRO;i++){
-  fprintf(stderr,"%d ",max[i]);
-}
-
-fprintf(stderr,"\ns_inc: \n");
-for(i=0;i<NUM_PRO;i++){
-  fprintf(stderr,"%f ",s_inc[i]);
-}
-
-fprintf(stderr,"\ns_dec: \n");
-for(i=0;i<NUM_PRO;i++){
-  fprintf(stderr,"%f ",s_dec[i]);
-}
-
-fprintf(stderr,"\nw_top: \n");
-for(i=0;i<NUM_PRO;i++){
-  fprintf(stderr,"%d ",w_top[i]);
-}
-
-fprintf(stderr,"\nw_peak: \n");
-for(i=0;i<NUM_PRO;i++){
-  fprintf(stderr,"%d ",w_peak[i]);
-}
-
-fprintf(stderr,"\nh_peak: \n");
-for(i=0;i<NUM_PRO;i++){
-  fprintf(stderr,"%d ",h_peak[i]);
-}
-fprintf(stderr,"\n");
-
-
-//test for single profile
-/*
-fprintf(stderr,"gap[] \n");
-for(j=0;j<count_gap[I];j++){
-  fprintf(stderr,"%d ",gap[I][j]);
-}
-fprintf(stderr,"\n");
-
-fprintf(stderr,"inc[] \n");
-for(j=0;j<count_inc[I];j++){
-  fprintf(stderr,"%d ",inc[I][j]);
-}
-fprintf(stderr,"\n");
-
-fprintf(stderr,"gap_d[] \n");
-for(j=0;j<count_gapd[I];j++){
-  fprintf(stderr,"%d ",gap_dec[I][j]);
-}
-fprintf(stderr,"\n");
-
-fprintf(stderr,"dec[] \n");
-for(j=0;j<count_dec[I];j++){
-  fprintf(stderr,"%d ",dec[I][j]);
-}
-fprintf(stderr,"\n");
-fprintf(stderr,"number in inc[] %d \n",count_inc[I]);
-
-fprintf(stderr,"number in dec[] %d \n",count_dec[I]);
-fprintf(stderr,"Inc_s=%d Inc_e=%d dec_s=%d dec_e=%d center=%d  \n",inc_s[I],inc_e[I],dec_s[I],dec_e[I],center[I]);
-fprintf(stderr,"w_top Is:%d \n",w_top[I]);
-fprintf(stderr,"w_peak Is:%d \n",w_peak[I]);
-fprintf(stderr,"h_Inc Is:%d \n",h_inc[I]);
-fprintf(stderr,"h_dec Is:%d \n",h_dec[I]);
-fprintf(stderr,"s_Inc Is:%f \n",s_inc[I]);
-fprintf(stderr,"s_dec Is:%f \n",s_dec[I]);
-fprintf(stderr,"h_peak Is:%f \n",h_peak[I]);
-*/
 
 float twidths[NUM_PRO]; //top width
 float pwidths[NUM_PRO];//peak width
@@ -489,40 +381,15 @@ for(count_pro=0;count_pro<NUM_PRO;count_pro++){
     
   }
 }
-fprintf(stderr,"\n%d elements in twidths[]: \n",ct);
-for(i=0;i<ct;i++){
-  fprintf(stderr,"%f ",twidths[i]);
-}
-fprintf(stderr,"\n");  
 
-fprintf(stderr,"\n%d elements in pwidths[]: \n",ct);
-for(i=0;i<ct;i++){
-  fprintf(stderr,"%f ",pwidths[i]);
-}
-fprintf(stderr,"\n");
-
-fprintf(stderr,"\n%d elements in rheights[]: \n",2*ct);
-for(i=0;i<2*ct;i++){
-  fprintf(stderr,"%f ",rheights[i]);
-}
-fprintf(stderr,"\n");
-
-fprintf(stderr,"\n%d elements in rslopes[]: \n",2*ct);
-for(i=0;i<2*ct;i++){
-  fprintf(stderr,"%f ",rslopes[i]);
-}
-fprintf(stderr,"\n");
-
-fprintf(stderr,"\n%d elements in pheights[]: \n",ct);
-for(i=0;i<ct;i++){
-  fprintf(stderr,"%f ",pheights[i]);
-}
-fprintf(stderr,"\n");
 
 //calculate profile property statistics
-float mpwidths,mtwidths,mrslopes,mrheights,mpheights;
+float mpwidths,mtwidths,mrslopes,mrheights,mpheights,MINpheights;
 float sdpwidths,sdtwidths,sdrslopes,sdrheights,sdpheights;
 float cvrheights,cvpheights;
+float score;
+
+
 
 //twidths
 float sum1=0,var1=0;//calculate mean twidths
@@ -588,25 +455,55 @@ sdpheights=sqrt(var5/(float)ct);
 
 cvpheights=sdpheights/mpheights;
 
-fprintf(stderr,"\nsum1=%f \n",sum1);
-fprintf(stderr,"\nct=%d \n",ct);
+MINpheights=pheights[0];
+for(i=0;i<ct;i++){
+  if(pheights[i]<MINpheights){
+    MINpheights=pheights[i];
+  }
+}
 
-fprintf(stderr,"mpwidths=%f \n",mpwidths);
-fprintf(stderr,"sdpwidths=%f \n",sdpwidths);
-fprintf(stderr,"sdtwidths=%f \n",sdtwidths);
-fprintf(stderr,"\nmtwidths=%f \n",mtwidths);
-fprintf(stderr,"sdpwidths=%f \n",sdrslopes);
+//score
+score=(MINpheights*mrslopes)/(1+sdpwidths+sdtwidths+sdrslopes+sdrheights+sdpheights);
 
-fprintf(stderr,"sdrheights=%f \n",sdrheights);
-fprintf(stderr,"sdpheights=%f \n",sdpheights);
-fprintf(stderr,"cvrheights=%f \n",cvrheights);
-fprintf(stderr,"cvpheights=%f \n",cvpheights);
 
-//VXclose(VXin);
-//VXclose(VXout);
-fprintf(fp_out,"%d,%d,%ld,%f,%f,%f,%f,%f,%f,%f\n",y_in,x_in,label_value,mpwidths,sdpwidths,mtwidths,sdtwidths,sdrslopes,cvrheights,cvpheights);
+
+
+
+
+Out[count_out].y_out=y_in;
+Out[count_out].x_out=x_in;
+Out[count_out].mpwidths=mpwidths;
+Out[count_out].sdpwidths=sdpwidths;
+Out[count_out].mtwidths=mtwidths;
+Out[count_out].sdtwidths=sdtwidths;
+Out[count_out].sdrslopes=sdrslopes;
+Out[count_out].cvrheights=cvrheights;
+Out[count_out].cvpheights=cvpheights;
+Out[count_out].score=score;
+Out[count_out].label=label_value;
+
+count_out++;
+
+fprintf(stderr,"%d,%d,%ld,%f,%f,%f,%f,%f,%f,%f,%f\n",y_in,x_in,label_value,
+    mpwidths,sdpwidths,mtwidths,sdtwidths,sdrslopes,cvrheights,cvpheights,score);
+
+}
+
+FILE *fp_out;
+fp_out=fopen("peakout.csv","w");
+
+if(!fp_out){
+  fprintf(stderr,"failed to open peakoutput for writing!\n");
+}else{
+  for(i=0;i<count_out;i++){
+   fprintf(stderr,"write %d,%d,%ld,%f,%f,%f,%f,%f,%f,%f,%f\n",Out[i].y_out,Out[i].x_out,Out[i].label,
+    Out[i].mpwidths,Out[i].sdpwidths,Out[i].mtwidths,Out[i].sdtwidths,Out[i].sdrslopes,Out[i].cvrheights,Out[i].cvpheights,Out[i].score);
+    fprintf(fp_out,"%d,%d,%ld,%f,%f,%f,%f,%f,%f,%f,%f\n",Out[i].y_out,Out[i].x_out,Out[i].label,
+    Out[i].mpwidths,Out[i].sdpwidths,Out[i].mtwidths,Out[i].sdtwidths,Out[i].sdrslopes,Out[i].cvrheights,Out[i].cvpheights,Out[i].score);
+  }
 }
 fclose(fp_out);
+
 exit(0);
 
 }
