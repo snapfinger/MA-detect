@@ -3,6 +3,15 @@
 #include <string.h>
 #include <math.h> 
 #include <stdbool.h>
+#include <limits.h>
+
+VXparam_t par[] =       
+{ //prefix, value,  description                           
+{    "if=",    0,   " input image"},
+{     0,       0,   0}  
+};
+
+#define  IVAL   par[0].val
 
 #define ARRAY_WIDTH 3
 #define MAX_LMR 60000
@@ -17,11 +26,11 @@
 #define NUM_PRO 30//corresponds to 6 degree cross profile
 #define I 11//for test
 
-
 int main(int argc, char** argv){
-fprintf(stderr,"here");
+
+VXparse(&argc,&argv,par);
 Vfstruct(im);
-Vfread(&im,"image10_pre.vx");
+Vfread(&im,IVAL);
 
 int p[NUM_PRO][ELEMENT];
 
@@ -353,6 +362,7 @@ for(count_pro=0;count_pro<NUM_PRO;count_pro++){
   }
 }
 
+
 for(count_pro=0;count_pro<NUM_PRO;count_pro++){
   
 }
@@ -467,7 +477,7 @@ score=(MINpheights*mrslopes)/(1+sdpwidths+sdtwidths+sdrslopes+sdrheights+sdpheig
 
 
 
-
+if(mpwidths>INT_MIN && mtwidths>INT_MIN && mpheights>INT_MIN && cvpheights>INT_MIN && cvpheights<INT_MAX && score>=0){
 
 
 Out[count_out].y_out=y_in;
@@ -486,27 +496,29 @@ count_out++;
 
 fprintf(stderr,"%d,%d,%ld,%f,%f,%f,%f,%f,%f,%f,%f\n",y_in,x_in,label_value,
     mpwidths,sdpwidths,mtwidths,sdtwidths,sdrslopes,cvrheights,cvpheights,score);
-
+  }
 }
 
 FILE *fp_out;
 fp_out=fopen("peakout.csv","w");
 
-if(!fp_out){
-  fprintf(stderr,"failed to open peakoutput for writing!\n");
-}else{
+
   for(i=0;i<count_out;i++){
    fprintf(stderr,"write %d,%d,%ld,%f,%f,%f,%f,%f,%f,%f,%f\n",Out[i].y_out,Out[i].x_out,Out[i].label,
     Out[i].mpwidths,Out[i].sdpwidths,Out[i].mtwidths,Out[i].sdtwidths,Out[i].sdrslopes,Out[i].cvrheights,Out[i].cvpheights,Out[i].score);
     fprintf(fp_out,"%d,%d,%ld,%f,%f,%f,%f,%f,%f,%f,%f\n",Out[i].y_out,Out[i].x_out,Out[i].label,
     Out[i].mpwidths,Out[i].sdpwidths,Out[i].mtwidths,Out[i].sdtwidths,Out[i].sdrslopes,Out[i].cvrheights,Out[i].cvpheights,Out[i].score);
   }
-}
+
 fclose(fp_out);
 
 exit(0);
 
 }
+
+
+
+
 
 
 
