@@ -108,16 +108,16 @@ int col_start=im.xlo+1,col_end=im.xhi-1;
 //find the rough region to search
 for(i=0;i<im.xhi;i++){
   if(im.u[im.yhi/2][i]<240){
-				col_start=i;
-				break;
-			}
+	col_start=i;
+	break;
+  }
 }
 
 for(i=im.xhi-1;i>0;i--){
    if(im.u[im.yhi/2][i]<240){
-			col_end=i;
-			break;
-    }
+	col_end=i;
+	break;
+  }
 }
 
 //use breadth-first search to find local maximum regions
@@ -146,23 +146,19 @@ for(y=row_start;y<=row_end;y++) //traverse all the pixels in the image
          j=code%offset;//column
          
          if(tm.u[i][j]>=tm.u[i-1][j-1] && tm.u[i][j]>=tm.u[i-1][j] && tm.u[i][j]>=tm.u[i-1][j+1] //compare the pixel with its 8-neighbours
-         && tm.u[i][j]>=tm.u[i][j-1] && tm.u[i][j]>=tm.u[i][j+1] && tm.u[i][j]>=tm.u[i+1][j-1] && tm.u[i][j]>=tm.u[i+1][j] && tm.u[i][j]>=tm.u[i+1][j+1] &&im.u[i][j]){
-           
-           
+         && tm.u[i][j]>=tm.u[i][j-1] && tm.u[i][j]>=tm.u[i][j+1] && tm.u[i][j]>=tm.u[i+1][j-1] && tm.u[i][j]>=tm.u[i+1][j] && tm.u[i][j]>=tm.u[i+1][j+1] &&im.u[i][j]){      
+                 
             fprintf(stderr,"code=%ld i=%d j=%d im[i][j]=%d\n",code,i,j,im.u[i][j]);
             im.u[i][j]=VISITED;
             Out[countLMR].x=j;
             Out[countLMR].y=i;
             Out[countLMR].label=label_value;
             countLMR++;
-           
-  
-        
-         
-    	   if(j>=col_start+1 && i>=row_start+1 && tm.u[i][j]==tm.u[i-1][j-1] && im.u[i-1][j-1] ){ //left-down  
-              element=(i-1)*offset+j-1;
-              EnQueue(&SQ,element);
-             // fprintf(stderr,"left-down enqueue: %ld %d %d\n",element,(i-1),j);
+
+    	if(j>=col_start+1 && i>=row_start+1 && tm.u[i][j]==tm.u[i-1][j-1] && im.u[i-1][j-1] ){ //left-down  
+          element=(i-1)*offset+j-1;
+          EnQueue(&SQ,element);
+          //fprintf(stderr,"left-down enqueue: %ld %d %d\n",element,(i-1),j);
         }
         if(i>=row_start+1 && tm.u[i][j]==tm.u[i-1][j] && im.u[i-1][j]){ //down  
           element=(i-1)*offset+j;
@@ -173,41 +169,41 @@ for(y=row_start;y<=row_end;y++) //traverse all the pixels in the image
         if(i>=row_start+1 && j<=col_end-1 && tm.u[i][j]==tm.u[i-1][j+1]&& im.u[i-1][j+1] ){//right-down
           element=(i-1)*offset+(j+1);
           EnQueue(&SQ,element);
-         // fprintf(stderr,"right-down enqueue: %ld %d %d\n",element,i-1,j+1);
+         //fprintf(stderr,"right-down enqueue: %ld %d %d\n",element,i-1,j+1);
         }
         if(j<=col_end-1 && tm.u[i][j]==tm.u[i][j+1]&& im.u[i][j+1] ){//right
            element=(i)*offset+(j+1);
            EnQueue(&SQ,element);
-         //  fprintf(stderr,"right enqueue: %ld %d %d\n",element,i,j+1);
+         //fprintf(stderr,"right enqueue: %ld %d %d\n",element,i,j+1);
         }
         //fprintf(stderr,"up-right label: %ld \n",label[i+1][j+1]);
         if(i<=row_end-1 && j<=col_end-1 && tm.u[i][j]==tm.u[i+1][j+1]&& im.u[i+1][j+1]){//up-right
-            element=(i+1)*offset+(j+1);
-            EnQueue(&SQ,element);
-         //  fprintf(stderr,"up-right enqueue: %ld %d %d\n",element,i+1,j+1);
+           element=(i+1)*offset+(j+1);
+           EnQueue(&SQ,element);
+         //fprintf(stderr,"up-right enqueue: %ld %d %d\n",element,i+1,j+1);
         }
        // fprintf(stderr,"up label: %ld \n",label[i+1][j]);
         if(i<=row_end-1 && tm.u[i][j]==tm.u[i+1][j]&& im.u[i+1][j]){//up
            element=(i+1)*offset+j;
            EnQueue(&SQ,element);
-         //  fprintf(stderr,"up enqueue: %ld %d %d\n",element,i+1,j);
+         //fprintf(stderr,"up enqueue: %ld %d %d\n",element,i+1,j);
         }
         if(i<=row_end-1 && j>=col_start+1 && tm.u[i][j]==tm.u[i+1][j-1] && im.u[i+1][j-1] ){//up-left
            element=(i+1)*offset+(j-1);
            EnQueue(&SQ,element);
-          // fprintf(stderr,"up-left enqueue: %ld %d %d\n",element,i+1,j-1);
+          //fprintf(stderr,"up-left enqueue: %ld %d %d\n",element,i+1,j-1);
         }
         if(j>=col_start+1 && tm.u[i][j]==tm.u[i][j-1]&& im.u[i][j-1] ){//left
            element=(i)*offset+(j-1);
            EnQueue(&SQ,element);
-          // fprintf(stderr,"left enqueue: %ld %d %d\n",element,i,j-1);
+          //fprintf(stderr,"left enqueue: %ld %d %d\n",element,i,j-1);
         }
         
         fprintf(stderr,"%d elements in queue: ",QueueLength(SQ));
-         for(countQ=SQ.front;countQ<=SQ.rear;countQ++){
-             fprintf(stderr,"%d ",SQ.data[countQ]);
-           }
-         fprintf(stderr,"\n\n");
+        for(countQ=SQ.front;countQ<=SQ.rear;countQ++){
+           fprintf(stderr,"%d ",SQ.data[countQ]);
+        }
+        fprintf(stderr,"\n\n");
          
        } 
     }      
