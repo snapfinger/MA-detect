@@ -1,5 +1,5 @@
-# Microaneurysms Detection in Fundus Images
-## Object and Developing Tools
+# Microaneurysm Detection in Fundus Images
+## Objective and Developing Tools
 This project is to automatically detect microaneurysms in fundus images, and is built in [VisionX](http://www.via.cornell.edu/visionx/vxmore.html) system  
 
 
