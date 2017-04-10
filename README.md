@@ -27,6 +27,5 @@ The sequence of the following code and scripts correspond to the experiment stag
   - With one input fundus image, it can output detected MA coordinates in a .csv file (one column y, one column x) and an image annotated with circles.
 
 ## Reference
-It mainly implements algorithm described in this paper: 
 Lazar, I., & Hajdu, A. (2013). Retinal microaneurysm detection through local rotating cross-section profile analysis. IEEE transactions on medical imaging, 32(2), 400-407.
  
