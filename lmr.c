@@ -158,45 +158,35 @@ for(y=row_start;y<=row_end;y++) //traverse all the pixels in the image
     	if(j>=col_start+1 && i>=row_start+1 && tm.u[i][j]==tm.u[i-1][j-1] && im.u[i-1][j-1] ){ //left-down  
           element=(i-1)*offset+j-1;
           EnQueue(&SQ,element);
-          //fprintf(stderr,"left-down enqueue: %ld %d %d\n",element,(i-1),j);
         }
         if(i>=row_start+1 && tm.u[i][j]==tm.u[i-1][j] && im.u[i-1][j]){ //down  
           element=(i-1)*offset+j;
           EnQueue(&SQ,element);
-          //fprintf(stderr,"down enqueue: %ld %d %d\n",element,i-1,j);
         }
         
         if(i>=row_start+1 && j<=col_end-1 && tm.u[i][j]==tm.u[i-1][j+1]&& im.u[i-1][j+1] ){//right-down
           element=(i-1)*offset+(j+1);
           EnQueue(&SQ,element);
-         //fprintf(stderr,"right-down enqueue: %ld %d %d\n",element,i-1,j+1);
         }
         if(j<=col_end-1 && tm.u[i][j]==tm.u[i][j+1]&& im.u[i][j+1] ){//right
            element=(i)*offset+(j+1);
            EnQueue(&SQ,element);
-         //fprintf(stderr,"right enqueue: %ld %d %d\n",element,i,j+1);
         }
-        //fprintf(stderr,"up-right label: %ld \n",label[i+1][j+1]);
         if(i<=row_end-1 && j<=col_end-1 && tm.u[i][j]==tm.u[i+1][j+1]&& im.u[i+1][j+1]){//up-right
            element=(i+1)*offset+(j+1);
            EnQueue(&SQ,element);
-         //fprintf(stderr,"up-right enqueue: %ld %d %d\n",element,i+1,j+1);
         }
-       // fprintf(stderr,"up label: %ld \n",label[i+1][j]);
         if(i<=row_end-1 && tm.u[i][j]==tm.u[i+1][j]&& im.u[i+1][j]){//up
            element=(i+1)*offset+j;
            EnQueue(&SQ,element);
-         //fprintf(stderr,"up enqueue: %ld %d %d\n",element,i+1,j);
         }
         if(i<=row_end-1 && j>=col_start+1 && tm.u[i][j]==tm.u[i+1][j-1] && im.u[i+1][j-1] ){//up-left
            element=(i+1)*offset+(j-1);
            EnQueue(&SQ,element);
-          //fprintf(stderr,"up-left enqueue: %ld %d %d\n",element,i+1,j-1);
         }
         if(j>=col_start+1 && tm.u[i][j]==tm.u[i][j-1]&& im.u[i][j-1] ){//left
            element=(i)*offset+(j-1);
            EnQueue(&SQ,element);
-          //fprintf(stderr,"left enqueue: %ld %d %d\n",element,i,j-1);
         }
         
         fprintf(stderr,"%d elements in queue: ",QueueLength(SQ));
@@ -213,7 +203,7 @@ for(y=row_start;y<=row_end;y++) //traverse all the pixels in the image
  }
 fprintf(stderr,"row_end=%d col_end=%d\n",row_end,col_end);
 
- fprintf(stderr,"end bfs\n");
+fprintf(stderr,"end bfs\n");
   
 for(i=0;i<countLMR;i++){
   om.u[Out[i].y][Out[i].x]=0;
@@ -229,9 +219,9 @@ for(i=0;i<countLMR;i++){
   fprintf(f,"%d,%d,%ld\n",Out[i].y,Out[i].x,Out[i].label);
 }
 
- fclose(f); 
- fprintf(stderr,"total lmr pixels:%ld\n",countLMR);
- exit(0);
+fclose(f); 
+fprintf(stderr,"total lmr pixels:%ld\n",countLMR);
+exit(0);
  
 }
 
